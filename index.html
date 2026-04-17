@@ -368,7 +368,17 @@ window.addEventListener("popstate",function(e){
 });
 
 // ══ SEARCH ══
-function doSearch(q){S.searchQuery=q;if(!q.trim()){S.searchResults=[];render();return;}const lq=q.toLowerCase();S.searchResults=S.allSongs.filter(s=>s.visible!==false&&(s.title?.toLowerCase().includes(lq)||s.artist?.toLowerCase().includes(lq))).slice(0,20);render();}
+let _searchTimer=null;
+function doSearch(q){
+  S.searchQuery=q;
+  if(!q.trim()){S.searchResults=[];render();return;}
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(()=>{
+    const lq=q.toLowerCase();
+    S.searchResults=S.allSongs.filter(s=>s.visible!==false&&(s.title?.toLowerCase().includes(lq)||s.artist?.toLowerCase().includes(lq)));
+    render();
+  },300);
+}
 function getArtists(){return[...new Set(S.allSongs.map(s=>s.artist).filter(Boolean))].sort();}
 function getSongs(){return[...new Set(S.allSongs.map(s=>s.title).filter(Boolean))].sort();}
 function getKnownNames(){try{return JSON.parse(localStorage.getItem("knownNames")||"[]");}catch{return[];}}
