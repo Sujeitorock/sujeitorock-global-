@@ -377,7 +377,7 @@ function doSearch(q){
     const lq=q.toLowerCase();
     S.searchResults=S.allSongs.filter(s=>s.visible!==false&&(s.title?.toLowerCase().includes(lq)||s.artist?.toLowerCase().includes(lq)));
     render();
-  },300);
+  },800);
 }
 function getArtists(){return[...new Set(S.allSongs.map(s=>s.artist).filter(Boolean))].sort();}
 function getSongs(){return[...new Set(S.allSongs.map(s=>s.title).filter(Boolean))].sort();}
