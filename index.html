@@ -414,8 +414,7 @@ function render(){
 
 function renderHome(){
   const playlists=S.playlists.filter(p=>p.visible!==false);
-  const t30=Date.now()-30*24*60*60*1000;
-  const recent=S.allSongs.filter(s=>s.visible!==false&&s.addedAt?.toMillis()>t30);
+  const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);
   const hasSearch=S.searchQuery.trim().length>0;
   return`<div class="screen fade-in">
     <div class="home-header">
