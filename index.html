@@ -822,7 +822,44 @@ async function deletePlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 async function toggleSong(plId,sId,cur){try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).update({visible:!cur});const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(s)s.visible=!cur;const as=S.allSongs.find(x=>x.id===sId&&x.playlistId===plId);if(as)as.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 async function removeWish(id){try{await db.collection("wishlist").doc(id).delete();toast("Removed!");}catch(e){toast("Error.");}}
-async function importBulk(){const text=document.getElementById("bulk-input")?.value.trim();if(!text){toast("Paste songs in the field above!");return;}if(!S.adminSongsPl){toast("Select a playlist!");return;}const lines=text.split("\n").map(l=>l.trim()).filter(l=>l&&l.includes("-"));if(!lines.length){toast("Wrong format! Use: Song - Artist");return;}toast("Importing "+lines.length+" songs...");let ok=0;for(const line of lines){const sep=line.indexOf(" - ");if(sep===-1)continue;const title=line.substring(0,sep).trim();const artist=line.substring(sep+3).trim();if(!title||!artist)continue;try{const ref=await db.collection("playlists").doc(S.adminSongsPl).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});const ns={id:ref.id,title,artist,visible:true,playlistId:S.adminSongsPl,playlistName:S.playlists.find(p=>p.id===S.adminSongsPl)?.name};if(!S.songs[S.adminSongsPl])S.songs[S.adminSongsPl]=[];S.songs[S.adminSongsPl].push(ns);S.allSongs.push(ns);ok++;}catch(e){}}toast(ok+" songs imported! 🎤");setTimeout(()=>renderAdmin(),500);}
+async function importBulk(){
+  const text = document.getElementById("bulk-input")?.value.trim();
+  if(!text){
+    toast("Paste songs in the field above!");
+    return;
+  }
+  if(!S.adminSongsPl){
+    toast("Select a playlist!");
+    return;
+  }
+  const lines = text.includes("|") 
+    ? text.split("|").map(l=>l.trim()).filter(l=>l)
+    : text.split("\n").map(l=>l.trim()).filter(l=>l);
+  const validLines = lines.filter(l => l.includes(" - "));
+  if(!validLines.length){
+    toast("Wrong format! Use: Song - Artist");
+    return;
+  }
+  toast("Importing "+validLines.length+" songs...");
+  let ok=0;
+  for(const line of validLines){
+    const sep = line.indexOf(" - ");
+    if(sep===-1) continue;
+    const title = line.substring(0, sep).trim();
+    const artist = line.substring(sep+3).trim();
+    if(!title || !artist) continue;
+    try{
+      const ref = await db.collection("playlists").doc(S.adminSongsPl).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const ns = {id:ref.id,title,artist,visible:true,playlistId:S.adminSongsPl,playlistName:S.playlists.find(p=>p.id===S.adminSongsPl)?.name};
+      if(!S.songs[S.adminSongsPl])S.songs[S.adminSongsPl]=[];
+      S.songs[S.adminSongsPl].push(ns);
+      S.allSongs.push(ns);
+      ok++;
+    }catch(e){}
+  }
+  toast(ok+" songs imported! 🎤");
+  setTimeout(()=>renderAdmin(),500);
+}
 function cycleArtist(){const artists=getArtists();if(!artists.length){toast("No artists yet.");return;}const inp=document.getElementById("new-s-artist");if(!inp)return;const cur=inp.value;const idx=artists.indexOf(cur);inp.value=artists[(idx+1)%artists.length];}
 function toggleMoveSong(sId){S._movingSong=S._movingSong===sId?null:sId;renderAdmin();}
 async function moveSongToPlaylist(fromPlId,sId,toPlId){const song=(S.songs[fromPlId]||[]).find(x=>x.id===sId);if(!song){toast("Song not found.");return;}toast("Moving song...");try{await db.collection("playlists").doc(toPlId).collection("songs").doc(sId).set({title:song.title,artist:song.artist,visible:song.visible!==false,addedAt:firebase.firestore.FieldValue.serverTimestamp()});await db.collection("playlists").doc(fromPlId).collection("songs").doc(sId).delete();S.songs[fromPlId]=(S.songs[fromPlId]||[]).filter(x=>x.id!==sId);const toPl=S.playlists.find(p=>p.id===toPlId);const ns={...song,playlistId:toPlId,playlistName:toPl?.name||""};if(!S.songs[toPlId])S.songs[toPlId]=[];S.songs[toPlId].push(ns);const ai=S.allSongs.findIndex(x=>x.id===sId&&x.playlistId===fromPlId);if(ai>=0)S.allSongs[ai]={...S.allSongs[ai],playlistId:toPlId,playlistName:toPl?.name||""};S._movingSong=null;toast("Song moved to "+toPl?.name+"! ✅");renderAdmin();}catch(err){toast("Error moving. Try again.");}}
