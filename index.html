@@ -448,7 +448,7 @@ function renderHome(){
       ${(!playlistsLoaded&&playlists.length===0)?'<div class="loading"><div class="spinner"></div></div>':""}
       ${(playlists.length>0||recent.length>0)?'<p class="section-title">Setlist</p>':""}
       <div class="playlists-grid">
-        ${recent.length>0?'<div class="playlist-card special" onclick="openRecent()"><span class="playlist-emoji">⚡</span><div class="playlist-name">Recently Added</div><div class="playlist-count">'+recent.length+' songs</div></div>':""}
+        ${recent.length>0?`<div class="playlist-card special" onclick="openRecent()"><span class="playlist-emoji">⚡</span><div class="playlist-name">Recently Added</div><div class="playlist-count">${recent.length} songs</div></div><div class="playlist-card special" onclick="openAllSongs()"><span class="playlist-emoji">🎵</span><div class="playlist-name">All Songs</div><div class="playlist-count">${S.allSongs.filter(s=>s.visible!==false).length} songs</div></div>`:""}
         ${playlists.map(pl=>`<div class="playlist-card" onclick="openPlaylist('${pl.id}')"><span class="playlist-emoji">${pl.emoji||"🎵"}</span><div class="playlist-name">${pl.name}</div><div class="playlist-count">${(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length} songs</div></div>`).join("")}
       </div>
       ${(playlists.length===0&&playlistsLoaded)?'<div class="empty-state"><div class="empty-icon">🎸</div><p>Setlist is being prepared — check back soon!</p></div>':""}
