@@ -805,7 +805,6 @@ async function bulkMoveSongs(toPlId){
 }
 async function bulkDeleteSongs(){
   if(!S.adminBulkSel.length)return;
-  if(!confirm(`Delete ${S.adminBulkSel.length} songs? This cannot be undone!`))return;
   const songs=[...S.adminBulkSel];
   toast(`Deleting ${songs.length} songs...`);
   let ok=0;
