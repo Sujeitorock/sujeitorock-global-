@@ -767,7 +767,7 @@ function renderAdminConfig(){
 
 // ══ ACTIONS ══
 function openPlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!pl)return;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];goTo("playlist",{currentPlaylist:pl});}
-${songs.length>0?`<div style="display:flex;gap:8px">${bulk?"<button class=\"select-toggle\" onclick=\"selectAllSongs()\">✅ All</button>":""}<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">${bulk?"✕ Cancel":"☑ Select"}</button></div>`:""}
+${songs.length>0?`<div style="display:flex;gap:8px">${bulk?"<button class=\"select-toggle\" onclick=\"selectAllSongs()\">✅ All</button>":""}<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">${bulk?"✕ Cancel":"☑ Select"}}</button>`:""}
 function selectSong(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;S.selectedSongs=[];S.currentSong=s;S.requesterName="";S.message="";S.tipMethod=null;S.showTipDetail=false;goTo("step1");}
 function openAllSongs(){const a=S.allSongs.filter(s=>s.visible!==false);const grouped={};a.forEach(s=>{if(!grouped[s.artist])grouped[s.artist]=[];grouped[s.artist].push(s);});const sorted=Object.keys(grouped).sort().map(artist=>({artist,songs:grouped[artist]}));S.currentPlaylist={id:"__all__",name:"All Songs",emoji:"🎵"};S.songs["__all__"]=a;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S._groupedByArtist=sorted;S.screen="playlist";render();}
 function toggleSelMode(){S.selectionMode=!S.selectionMode;if(!S.selectionMode)S.selectedSongs=[];render();}
