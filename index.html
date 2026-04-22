@@ -504,7 +504,7 @@ function renderPlaylist(){
     let counter=0;
     sorted.forEach(artist=>{
       const artistSongs=grouped[artist];
-      songsHtml+=`<div class="artist-group"><div class="artist-header">${artist} <span class="artist-count">(${artistSongs.length})</span></div>`;
+      songsHtml+=`<div class="artist-group">`;
       artistSongs.forEach(s=>{counter++;songsHtml+=songRow(s,counter);});
       songsHtml+=`</div>`;
     });
