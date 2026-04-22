@@ -1085,7 +1085,7 @@ async function loadPlaylists(){
     const snap=await db.collection("playlists").orderBy("order","asc").get();
     S.playlists=snap.docs.map(d=>({id:d.id,...d.data()}));
     await Promise.all(S.playlists.map(async pl=>{
-      const ss=await db.collection("playlists").doc(pl.id).collection("songs").where("visible","!=",false).get();
+     const ss=await db.collection("playlists").doc(pl.id).collection("songs").get();
       S.songs[pl.id]=ss.docs.map(d=>({id:d.id,...d.data(),playlistId:pl.id,playlistName:pl.name}));
       S.allSongs.push(...S.songs[pl.id]);
     }));
