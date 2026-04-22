@@ -825,7 +825,25 @@ async function bulkDeleteSongs(){
   toast(`${ok} songs deleted! 🗑`);
   setTimeout(()=>renderAdmin(),400);
 }
-
+function bulkEdit(){
+  if(S.adminBulkSel.length!==1){toast("Select only 1 song to edit!");return;}
+  const s=S.adminBulkSel[0];
+  const newTitle=prompt("Song title:",s.title);
+  if(newTitle===null)return;
+  const newArtist=prompt("Artist:",s.artist);
+  if(newArtist===null)return;
+  if(!newTitle.trim()||!newArtist.trim()){toast("Fill in both fields!");return;}
+  db.collection("playlists").doc(s.playlistId).collection("songs").doc(s.id)
+    .update({title:newTitle.trim(),artist:newArtist.trim()})
+    .then(()=>{
+      const ls=(S.songs[s.playlistId]||[]).find(x=>x.id===s.id);
+      if(ls){ls.title=newTitle.trim();ls.artist=newArtist.trim();}
+      const la=S.allSongs.find(x=>x.id===s.id&&x.playlistId===s.playlistId);
+      if(la){la.title=newTitle.trim();la.artist=newArtist.trim();}
+      S.adminBulkSel=[];toast("Song updated! ✅");renderAdmin();
+    })
+    .catch(()=>toast("Error saving."));
+}
 function selectAllSongs(){
   const songs=S.adminSongsPl?(S.songs[S.adminSongsPl]||[]):[];
   S.adminBulkSel=songs.map(s=>({...s,playlistId:S.adminSongsPl}));
