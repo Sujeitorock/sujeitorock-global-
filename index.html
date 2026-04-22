@@ -814,7 +814,7 @@ async function bulkDeleteSongs(){
       S.songs[song.playlistId]=(S.songs[song.playlistId]||[]).filter(x=>x.id!==song.id);
       S.allSongs=S.allSongs.filter(x=>!(x.id===song.id&&x.playlistId===song.playlistId));
       ok++;
-    }catch(e){}
+    }catch(e){toast("Error: "+e.message);}
   }
   S.adminBulkSel=[];S.adminBulkMode=false;
   toast(`${ok} songs deleted! 🗑`);
