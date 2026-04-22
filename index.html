@@ -826,6 +826,23 @@ function selectAllSongs(){
   S.adminBulkSel=songs.map(s=>({...s,playlistId:S.adminSongsPl}));
   renderAdmin();
 }
+  async function bulkToggleVisible(){
+  if(!S.adminBulkSel.length)return;
+  const songs=[...S.adminBulkSel];
+  for(const song of songs){
+    try{
+      const cur=song.visible!==false;
+      await db.collection("playlists").doc(S.adminSongsPl).collection("songs").doc(song.id).update({visible:!cur});
+      const s=(S.songs[S.adminSongsPl]||[]).find(x=>x.id===song.id);
+      if(s)s.visible=!cur;
+      const as=S.allSongs.find(x=>x.id===song.id);
+      if(as)as.visible=!cur;
+    }catch(e){}
+  }
+  S.adminBulkSel=[];S.adminBulkMode=false;
+  toast("Done! 👁");setTimeout(()=>renderAdmin(),400);
+}
+  
 // ══ ADMIN ACTIONS ══
 async function doLogin(){
   const e=document.getElementById("login-email")?.value;const p=document.getElementById("login-pass")?.value;const err=document.getElementById("login-err");
