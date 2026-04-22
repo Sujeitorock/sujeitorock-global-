@@ -512,6 +512,8 @@ function renderPlaylist(){
     const filtered=q?songs.filter(s=>s.title?.toLowerCase().includes(q)||s.artist?.toLowerCase().includes(q)):songs;
     songsHtml=filtered.length===0?'<div class="empty-state"><p>No songs found.</p></div>':filtered.map((s,i)=>songRow(s,i)).join("");
   }
+  return`<div class="screen fade-in"><div class="screen-header"><button class="back-btn" onclick="goHome()">←</button><div class="screen-header-info"><div class="screen-header-title">${pl.emoji||"🎵"} ${pl.name}</div><div class="screen-header-sub">${songs.length} songs in the setlist</div></div><button class="select-toggle ${selMode?"active":""}" onclick="toggleSelMode()">${selMode?"Cancel":"Select"}</button></div><div class="playlist-search"><input type="text" id="pl-search" placeholder="Filter songs..." oninput="filterPl(this.value)" autocomplete="off" value="${q}"></div><div class="songs-list" style="${selMode?"padding-bottom:80px":""}">      ${songsHtml}</div>${!selMode?`<button class="suggest-btn" onclick="goTo('suggest',{currentPlaylist:S.currentPlaylist})">➕ Don't see your song? Suggest one</button>`:""}${selMode&&S.selectedSongs.length>0?`<div class="select-bar"><div class="select-bar-info"><span>${S.selectedSongs.length}</span> song${S.selectedSongs.length>1?"s":""} selected</div><button class="btn-request-all" onclick="requestSelectedSongs()">🎸 REQUEST ALL</button></div>`:""}</div>`;
+}
   
   const filtered=q?songs.filter(s=>s.title?.toLowerCase().includes(q)||s.artist?.toLowerCase().includes(q)):songs;
   
