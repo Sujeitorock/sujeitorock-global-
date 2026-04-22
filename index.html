@@ -486,20 +486,40 @@ function renderPlaylist(){
   const pl=S.currentPlaylist;if(!pl)return"";
   const songs=(S.songs[pl.id]||[]).filter(s=>s.visible!==false);
   const q=S._plSearch||"";
-  const filtered=q?songs.filter(s=>s.title?.toLowerCase().includes(q)||s.artist?.toLowerCase().includes(q)):songs;
   const selMode=S.selectionMode;
   const selIds=new Set(S.selectedSongs.map(x=>x.id));
+  
   function songRow(s,i){
     const sel=selIds.has(s.id);
     if(selMode){return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div></div>`;}
     return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div><span class="song-arrow">›</span></div>`;
   }
+  
+  let songsHtml="";
+  
+  if(pl.id==="__all__"){
+    const grouped={};
+    songs.forEach(s=>{if(!grouped[s.artist])grouped[s.artist]=[];grouped[s.artist].push(s);});
+    const sorted=Object.keys(grouped).sort();
+    let counter=0;
+    sorted.forEach(artist=>{
+      const artistSongs=grouped[artist];
+      songsHtml+=`<div class="artist-group"><div class="artist-header">${artist} <span class="artist-count">(${artistSongs.length})</span></div>`;
+      artistSongs.forEach(s=>{counter++;songsHtml+=songRow(s,counter);});
+      songsHtml+=`</div>`;
+    });
+  }else{
+    const filtered=q?songs.filter(s=>s.title?.toLowerCase().includes(q)||s.artist?.toLowerCase().includes(q)):songs;
+    songsHtml=filtered.length===0?'<div class="empty-state"><p>No songs found.</p></div>':filtered.map((s,i)=>songRow(s,i)).join("");
+  }
+  
+  const filtered=q?songs.filter(s=>s.title?.toLowerCase().includes(q)||s.artist?.toLowerCase().includes(q)):songs;
+  
   return`<div class="screen fade-in">
     <div class="screen-header"><button class="back-btn" onclick="goHome()">←</button><div class="screen-header-info"><div class="screen-header-title">${pl.emoji||"🎵"} ${pl.name}</div><div class="screen-header-sub">${songs.length} songs in the setlist</div></div><button class="select-toggle ${selMode?"active":""}" onclick="toggleSelMode()">${selMode?"Cancel":"Select"}</button></div>
-    <div class="playlist-search"><input type="text" id="pl-search" placeholder="Filter songs..." oninput="filterPl(this.value)" autocomplete="off" value="${q}"></div>
+    <div class="playlist-search"><input type="text" id="pl-search" placeholder="Filter songs..." oninput="filterPl(this.value)" autocomplete="off"></div>
     <div class="songs-list" style="${selMode?"padding-bottom:80px":""}">
-      ${filtered.length===0?'<div class="empty-state"><p>No songs found.</p></div>':""}
-      ${filtered.map((s,i)=>songRow(s,i)).join("")}
+      ${songsHtml}
     </div>
     ${!selMode?`<button class="suggest-btn" onclick="goTo('suggest',{currentPlaylist:S.currentPlaylist})">➕ Don't see your song? Suggest one</button>`:""}
     ${selMode&&S.selectedSongs.length>0?`<div class="select-bar"><div class="select-bar-info"><span>${S.selectedSongs.length}</span> song${S.selectedSongs.length>1?"s":""} selected</div><button class="btn-request-all" onclick="requestSelectedSongs()">🎸 REQUEST ALL</button></div>`:""}
