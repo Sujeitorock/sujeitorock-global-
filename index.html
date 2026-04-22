@@ -810,7 +810,7 @@ async function bulkDeleteSongs(){
   let ok=0;
   for(const song of songs){
     try{
-      await db.collection("playlists").doc(song.playlistId).collection("songs").doc(song.id).delete();
+      await db.collection("playlists").doc(S.adminSongsPl).collection("songs").doc(song.id).delete();
       S.songs[song.playlistId]=(S.songs[song.playlistId]||[]).filter(x=>x.id!==song.id);
       S.allSongs=S.allSongs.filter(x=>!(x.id===song.id&&x.playlistId===song.playlistId));
       ok++;
