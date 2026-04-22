@@ -491,8 +491,8 @@ function renderPlaylist(){
   
   function songRow(s,i){
     const sel=selIds.has(s.id);
-    if(selMode){return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div></div>`;}
-    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div><span class="song-arrow">›</span></div>`;
+    if(selMode){return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div></div>`;}
+    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div><span class="song-arrow">›</span></div>`;
   }
   
   let songsHtml="";
@@ -523,8 +523,8 @@ function filterPl(q){
   const selMode=S.selectionMode;const selIds=new Set(S.selectedSongs.map(x=>x.id));
   sl.innerHTML=(filtered.length===0?'<div class="empty-state"><p>No songs found.</p></div>':"")+filtered.map((s,i)=>{
     const sel=selIds.has(s.id);
-    if(selMode)return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div></div>`;
-    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-artist">${s.artist}</div></div><span class="song-arrow">›</span></div>`;
+    if(selMode)return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div></div>`;
+    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div><span class="song-arrow">›</span></div>`;
   }).join("");
 }
 
