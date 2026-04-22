@@ -760,7 +760,7 @@ function renderAdminConfig(){
 
 // ══ ACTIONS ══
 function openPlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!pl)return;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];goTo("playlist",{currentPlaylist:pl});}
-function openRecent(){const t=Date.now()-30*24*60*60*1000;const r=S.allSongs.filter(s=>s.visible!==false&&s.addedAt?.toMillis()>t);S.currentPlaylist={id:"__recent__",name:"Recently Added",emoji:"⚡"};S.songs["__recent__"]=r;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S.screen="playlist";render();}
+function openRecent(){const r=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);S.currentPlaylist={id:"__recent__",name:"Recently Added",emoji:"⚡"};S.songs["__recent__"]=r;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S.screen="playlist";render();}
 function selectSong(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;S.selectedSongs=[];S.currentSong=s;S.requesterName="";S.message="";S.tipMethod=null;S.showTipDetail=false;goTo("step1");}
 function toggleSelMode(){S.selectionMode=!S.selectionMode;if(!S.selectionMode)S.selectedSongs=[];render();}
 function toggleSongSel(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;const idx=S.selectedSongs.findIndex(x=>x.id===sId);if(idx>=0)S.selectedSongs.splice(idx,1);else S.selectedSongs.push(s);render();}
