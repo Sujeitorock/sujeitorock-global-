@@ -805,7 +805,7 @@ async function bulkMoveSongs(toPlId){
 }
 async function bulkDeleteSongs(){
   if(!S.adminBulkSel.length)return;
-  const songs=[...S.adminBulkSel];
+  if(!confirm(`Delete ${S.adminBulkSel.length} songs?`))return;const songs=[...S.adminBulkSel];
   toast(`Deleting ${songs.length} songs...`);
   let ok=0;
   for(const song of songs){
