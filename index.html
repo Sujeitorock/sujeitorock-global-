@@ -804,7 +804,30 @@ async function bulkMoveSongs(toPlId){
   toast(`${ok} songs moved to ${toPl?.name}! ✅`);
   setTimeout(()=>renderAdmin(),400);
 }
+async function bulkDeleteSongs(){
+  if(!S.adminBulkSel.length)return;
+  if(!confirm(`Delete ${S.adminBulkSel.length} songs? This cannot be undone!`))return;
+  const songs=[...S.adminBulkSel];
+  toast(`Deleting ${songs.length} songs...`);
+  let ok=0;
+  for(const song of songs){
+    try{
+      await db.collection("playlists").doc(song.playlistId).collection("songs").doc(song.id).delete();
+      S.songs[song.playlistId]=(S.songs[song.playlistId]||[]).filter(x=>x.id!==song.id);
+      S.allSongs=S.allSongs.filter(x=>!(x.id===song.id&&x.playlistId===song.playlistId));
+      ok++;
+    }catch(e){}
+  }
+  S.adminBulkSel=[];S.adminBulkMode=false;
+  toast(`${ok} songs deleted! 🗑`);
+  setTimeout(()=>renderAdmin(),400);
+}
 
+function selectAllSongs(){
+  const songs=S.adminSongsPl?(S.songs[S.adminSongsPl]||[]):[];
+  S.adminBulkSel=songs.map(s=>({...s,playlistId:S.adminSongsPl}));
+  renderAdmin();
+}
 // ══ ADMIN ACTIONS ══
 async function doLogin(){
   const e=document.getElementById("login-email")?.value;const p=document.getElementById("login-pass")?.value;const err=document.getElementById("login-err");
