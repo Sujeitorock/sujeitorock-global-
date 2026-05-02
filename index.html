@@ -581,12 +581,12 @@ function renderStep2(){
         <a href="https://www.paypal.com/donate/?hosted_button_id=GSJMKQDLSF7PS" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center;margin-top:10px">💵 TIP IN USD</a>
         <a href="https://www.paypal.com/donate/?hosted_button_id=SXYYB7YL8U24Y" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center;margin-top:10px;background:linear-gradient(135deg,#003399,#002266)">💶 TIP IN EUR</a>
       </div>
-      <div class="tip-detail-box ${isPix&&S.showTipDetail?"show":""}">
-        <div class="tip-key-label">Pix Key</div>
-        <div class="tip-key-value">valeu@sujeitorock.com.br</div>
-        <button class="copy-btn" onclick="copyText('valeu@sujeitorock.com.br','Pix key copied!')">📋 Copy Pix key</button>
-        <div class="pix-qr-wrap"><img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=valeu@sujeitorock.com.br" alt="QR Code" style="border-radius:8px;width:160px;height:160px"></div>
-        <div class="pix-note-en">* Pix funciona apenas para contas bancárias brasileiras · Titular: Isaías</div>
+     <div class="tip-detail-box ${isPix&&S.showTipDetail?"show":""}">
+  <div class="tip-key-label">Chave Pix (somente Brasil)</div>
+  <div class="tip-key-value">valeu@sujeitorock.com.br</div>
+  <button class="copy-btn" onclick="copyText('valeu@sujeitorock.com.br','Chave Pix copiada!')">📋 Copiar chave Pix</button>
+  <div class="pix-note-en" style="margin-top:10px">⚡ Pix é o sistema de transferência instantânea brasileiro. Funciona apenas em apps de bancos do Brasil. Titular: Isaías</div>
+</div>
       </div>
       ${S.tipMethod&&S.showTipDetail?`<button class="btn-primary" onclick="confirmRequest(true)">✅ DONE! SEND MY REQUEST</button>`:""}
       <button class="btn-secondary" onclick="confirmRequest(false)">Not now, just send my request</button>
