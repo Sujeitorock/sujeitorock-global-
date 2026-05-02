@@ -563,8 +563,8 @@ function renderStep2(){
     <div class="screen-header"><button class="back-btn" onclick="goTo('step1')">←</button><div class="screen-header-info"><div class="screen-header-title">Support the Artist</div></div></div>
     <div class="step-screen" style="padding-top:24px">
       <div class="step-pill">💰 Step 2 of 2</div>
-      <p style="font-size:18px;font-weight:700;margin:12px 0 6px">${S.selectedSongs.length>1?"Your songs are requested!":"Your song is requested!"} 🎸</p>
-      <p style="font-size:14px;color:var(--gray2);margin-bottom:24px;line-height:1.5">Hey <strong style="color:white">${S.requesterName}</strong>! Want to support Sujeito Rock with a tip? Choose your method:</p>
+      <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--red2)">Hey ${S.requesterName}, before finalizing your request ⚠️</p>
+<p style="font-size:14px;color:var(--gray2);margin-bottom:24px;line-height:1.5">Want to support Sujeito Rock with a tip? Choose your method:</p>
       <div class="tip-opts">
         <button class="tip-opt-btn ${isKofi?"selected":""}" onclick="S.tipMethod='kofi';S.showTipDetail=true;render()"><span class="tip-opt-icon">☕</span>Ko-fi<span class="tip-opt-label">Buy a coffee</span></button>
         <button class="tip-opt-btn ${isPaypal?"selected":""}" onclick="S.tipMethod='paypal';S.showTipDetail=true;render()"><span class="tip-opt-icon">🅿️</span>PayPal<span class="tip-opt-label">Send a tip</span></button>
