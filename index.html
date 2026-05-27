@@ -788,8 +788,41 @@ function renderAdminSongs(){
 
 function renderAdminWish(){
   if(S.wishlist.length===0)return'<div class="empty-state"><div class="empty-icon">💌</div><p>No suggestions yet.</p></div>';
+  const pls=S.playlists.filter(p=>p.visible!==false);
   return`<p style="font-size:13px;color:var(--gray2);margin-bottom:16px">${S.wishlist.length} suggestion${S.wishlist.length!==1?"s":""} from the audience</p>
-  ${S.wishlist.map(w=>`<div class="wish-item"><div class="wish-count">${w.count||1}</div><div style="flex:1"><div style="font-weight:700;font-size:15px">${w.title}</div><div style="font-size:13px;color:var(--gray2)">${w.artist}</div></div><button onclick="removeWish('${w.id}')" style="background:none;border:none;color:var(--gray);font-size:18px;cursor:pointer">✕</button></div>`).join("")}`;
+  ${S.wishlist.map(w=>{
+    const isOpen=S._wishAddOpen===w.id;
+    return`<div class="wish-item-wrap" style="margin-bottom:8px">
+      <div class="wish-item" style="margin-bottom:${isOpen?"0":"8px"}">
+        <div class="wish-count">${w.count||1}</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:15px">${esc(w.title)}</div><div style="font-size:13px;color:var(--gray2)">${esc(w.artist)}</div></div>
+        <button onclick="toggleWishAdd('${w.id}')" title="Add to playlist" style="background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.3);color:#27ae60;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:4px">${isOpen?"−":"+"}</button>
+        <button onclick="removeWish('${w.id}')" title="Delete" style="background:none;border:none;color:var(--gray);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      ${isOpen?`<div class="move-song-panel" style="margin:0 0 8px">
+        <div class="move-song-panel-title">Add to playlist:</div>
+        <div class="move-pl-pills">
+          ${pls.length===0?'<span style="color:var(--gray);font-size:12px">No playlists available</span>':pls.map(p=>`<button class="move-pl-pill" onclick="addWishToPlaylist('${w.id}','${p.id}')">${p.emoji||"🎵"} ${esc(p.name)}</button>`).join("")}
+        </div>
+      </div>`:""}
+    </div>`;
+  }).join("")}`;
+}
+function toggleWishAdd(id){S._wishAddOpen=S._wishAddOpen===id?null:id;renderAdmin();}
+async function addWishToPlaylist(wishId,plId){
+  const w=S.wishlist.find(x=>x.id===wishId);
+  if(!w){toast("Suggestion not found.");return;}
+  try{
+    const ref=await db.collection("playlists").doc(plId).collection("songs").add({title:w.title,artist:w.artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const pl=S.playlists.find(p=>p.id===plId);
+    const ns={id:ref.id,title:w.title,artist:w.artist,visible:true,playlistId:plId,playlistName:pl?.name};
+    if(!S.songs[plId])S.songs[plId]=[];
+    S.songs[plId].push(ns);
+    S.allSongs.push(ns);
+    await db.collection("wishlist").doc(wishId).delete();
+    S._wishAddOpen=null;
+    toast(`Added to ${pl?.name||"playlist"}! 🎤`);
+  }catch(e){toast("Error adding song.");}
 }
 
 function renderAdminConfig(){
