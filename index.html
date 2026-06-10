@@ -14,7 +14,10 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#000000;--bg2:#111111;--bg3:#1e1e1e;--red:#c0392b;--red2:#e74c3c;--white:#fff;--gray:#666;--gray2:#999;--border:rgba(255,255,255,0.08);--radius:12px}
-html,body{background:var(--bg);color:var(--white);font-family:"Barlow",sans-serif;min-height:100vh;overflow-x:hidden}
+html{background:var(--bg)}
+html,body{color:var(--white);font-family:"Barlow",sans-serif;min-height:100vh;overflow-x:hidden}
+body{background:transparent}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(0,0,0,0.45),rgba(0,0,0,0.45)),url('bg.jpg') center/cover no-repeat}
 #root{max-width:480px;margin:0 auto;min-height:100vh;position:relative}
 #toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--red);color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:600;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
@@ -83,6 +86,9 @@ html,body{background:var(--bg);color:var(--white);font-family:"Barlow",sans-seri
 .playlist-emoji{font-size:30px;display:block;margin-bottom:8px}
 .playlist-name{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2}
 .playlist-count{font-size:12px;color:var(--gray2);margin-top:4px}
+.playlist-card-img{padding:0;display:flex;flex-direction:column;background:var(--bg3)}
+.playlist-card-img img{display:block;width:100%;height:auto;border-radius:var(--radius) var(--radius) 0 0}
+.playlist-card-img .playlist-count{margin:0;padding:5px 10px 7px;text-align:right}
 
 /* FOOTER */
 .home-footer{margin-top:auto;padding:24px 20px 36px;border-top:1px solid var(--border)}
@@ -363,7 +369,7 @@ function toast(msg,dur=2400){const el=document.getElementById("toast");el.textCo
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function goHome(){S.screen="home";S.searchQuery="";S.searchResults=[];S.suggestTitle="";S.suggestArtist="";S.currentPlaylist=null;S.currentSong=null;S.selectedSongs=[];S.selectionMode=false;S._plSearch="";history.replaceState({screen:"home"},"home","");render();window.scrollTo(0,0);}
 function goTo(screen,extra={}){Object.assign(S,extra);S.screen=screen;history.pushState({screen},"",screen==="admin-login"?"#admin":"");render();window.scrollTo(0,0);}
-function goBack(){const m={step1:S.currentPlaylist?"playlist":"home",step2:"step1",suggest:S.currentPlaylist?"playlist":"home"};goTo(m[S.screen]||"home");}
+function goBack(){const m={step1:S.currentPlaylist?"playlist":"home",step2:"home",suggest:S.currentPlaylist?"playlist":"home"};goTo(m[S.screen]||"home");}
 
 // ══ POPSTATE ══
 window.addEventListener("popstate",function(e){
@@ -430,6 +436,13 @@ function render(){
   attachEvents();
 }
 
+const BTN_IMG={"recentlyadded":"btn/newly-added.jpg","newlyadded":"btn/newly-added.jpg","nationals":"btn/nationals.jpg","nacionais":"btn/nationals.jpg","80s":"btn/80s.jpg","lovesongs":"btn/love-songs.jpg","lovesong":"btn/love-songs.jpg","90s":"btn/90s.jpg","2000s":"btn/2000s.jpg","alternativerock":"btn/alt-rock.jpg","alternativesrock":"btn/alt-rock.jpg","punkrockpop":"btn/punk-rock-pop.jpg","punkrocksongs":"btn/punk-rock-pop.jpg","punkrocksong":"btn/punk-rock-pop.jpg","allsongs":"btn/all-songs.jpg","soundtrackmovies":"btn/soundtrack.jpg","soudntrackmovies":"btn/soundtrack.jpg","soundtrackmovie":"btn/soundtrack.jpg","hardrockmetal":"btn/hard-rock-metal.jpg","softsongs":"btn/soft-songs.jpg","softsong":"btn/soft-songs.jpg","acousticshow":"btn/acoustic.jpg","acousticsongs":"btn/acoustic.jpg","acoustic":"btn/acoustic.jpg"};
+function btnImg(name){if(!name)return null;return BTN_IMG[name.toLowerCase().replace(/[^a-z0-9]/g,"")]||null;}
+function plCard(onclick,name,emoji,count,special){
+  const img=btnImg(name);
+  if(img)return`<div class="playlist-card playlist-card-img" onclick="${onclick}"><img src="${img}" alt="${name}" loading="lazy"><div class="playlist-count">${count} songs</div></div>`;
+  return`<div class="playlist-card ${special?"special":""}" onclick="${onclick}"><span class="playlist-emoji">${emoji}</span><div class="playlist-name">${name}</div><div class="playlist-count">${count} songs</div></div>`;
+}
 function renderHome(){
   const playlists=S.playlists.filter(p=>p.visible!==false);
   const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);
@@ -459,8 +472,8 @@ function renderHome(){
       ${(!playlistsLoaded&&playlists.length===0)?'<div class="loading"><div class="spinner"></div></div>':""}
       ${(playlists.length>0||recent.length>0)?'<p class="section-title">Setlist</p>':""}
       <div class="playlists-grid">
-        ${recent.length>0?`<div class="playlist-card special" onclick="openRecent()"><span class="playlist-emoji">⚡</span><div class="playlist-name">Recently Added</div><div class="playlist-count">${recent.length} songs</div></div><div class="playlist-card special" onclick="openAllSongs()"><span class="playlist-emoji">🎵</span><div class="playlist-name">All Songs</div><div class="playlist-count">${S.allSongs.filter(s=>s.visible!==false).length} songs</div></div>`:""}
-        ${playlists.map(pl=>`<div class="playlist-card" onclick="openPlaylist('${pl.id}')"><span class="playlist-emoji">${pl.emoji||"🎵"}</span><div class="playlist-name">${pl.name}</div><div class="playlist-count">${(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length} songs</div></div>`).join("")}
+        ${recent.length>0?plCard("openRecent()","Recently Added","⚡",recent.length,true)+plCard("openAllSongs()","All Songs","🎵",S.allSongs.filter(s=>s.visible!==false).length,true):""}
+        ${playlists.map(pl=>plCard(`openPlaylist('${pl.id}')`,pl.name,pl.emoji||"🎵",(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length,false)).join("")}
       </div>
       ${(playlists.length===0&&playlistsLoaded)?'<div class="empty-state"><div class="empty-icon">🎸</div><p>Setlist is being prepared — check back soon!</p></div>':""}
     </div>
@@ -574,7 +587,7 @@ function renderStep1(){
   return`<div class="screen fade-in">
     <div class="screen-header"><button class="back-btn" onclick="goBack()">←</button><div class="screen-header-info"><div class="screen-header-title">Request ${multi?"Songs":"Song"}</div></div></div>
     <div class="step-screen">
-      <div class="step-pill">🎸 Step 1 of 2</div>
+      <div class="step-pill">🎸 Almost there!</div>
       ${songPreview}
       <div class="field"><label>Your name *</label><input type="text" id="inp-name" placeholder="SL username or nickname" value="${S.requesterName}" oninput="S.requesterName=this.value;showAutocomplete('inp-name',getKnownNames(),v=>{S.requesterName=v})" autocomplete="given-name"></div>
       <div class="field"><label>Message to Sujeito <span class="optional">(optional)</span></label><textarea id="inp-msg" rows="3" placeholder="Dedications, shoutouts, anything..." oninput="S.message=this.value">${S.message}</textarea></div>
@@ -584,18 +597,17 @@ function renderStep1(){
   </div>`;
 }
 
-function submitStep1(){if(!S.requesterName.trim()){toast("Please enter your name! 😊");const inp=document.getElementById("inp-name");if(inp){inp.focus();inp.style.borderColor="var(--red2)";}return;}saveKnownName(S.requesterName.trim());goTo("step2");}
+function submitStep1(){if(!S.requesterName.trim()){toast("Please enter your name! 😊");const inp=document.getElementById("inp-name");if(inp){inp.focus();inp.style.borderColor="var(--red2)";}return;}saveKnownName(S.requesterName.trim());sendRequest();}
 
 function renderStep2(){
   const isKofi=S.tipMethod==="kofi";
   const isPaypal=S.tipMethod==="paypal";
   const isPix=S.tipMethod==="pix";
   return`<div class="screen fade-in">
-    <div class="screen-header"><button class="back-btn" onclick="goTo('step1')">←</button><div class="screen-header-info"><div class="screen-header-title">Support the Artist</div></div></div>
+    <div class="screen-header"><button class="back-btn" onclick="goHome()">←</button><div class="screen-header-info"><div class="screen-header-title">Support the Artist</div></div></div>
     <div class="step-screen" style="padding-top:24px">
-      <div class="step-pill">💰 Step 2 of 2</div>
-      <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--red2)">Hey ${S.requesterName}, before finalizing your request ⚠️</p>
-<p style="font-size:14px;color:var(--gray2);margin-bottom:24px;line-height:1.5">Want to support Sujeito Rock with a tip? Choose your method:</p>
+      <p style="font-size:18px;font-weight:700;margin:12px 0 6px;color:var(--red2)">Want to support Sujeito Rock with a tip? ☕</p>
+<p style="font-size:14px;color:var(--gray2);margin-bottom:24px;line-height:1.5">Você quer apoiar o Sujeito Rock com um tip? Os meios estão aqui abaixo · Choose your method below:</p>
       <div class="tip-opts">
         <button class="tip-opt-btn ${isKofi?"selected":""}" onclick="S.tipMethod='kofi';S.showTipDetail=true;render()"><span class="tip-opt-icon">☕</span>Ko-fi<span class="tip-opt-label">Buy a coffee</span></button>
         <button class="tip-opt-btn ${isPaypal?"selected":""}" onclick="S.tipMethod='paypal';S.showTipDetail=true;render()"><span class="tip-opt-icon">🅿️</span>PayPal<span class="tip-opt-label">Send a tip</span></button>
@@ -619,38 +631,74 @@ function renderStep2(){
   <div class="pix-note-en" style="margin-top:10px">⚡ Pix é o sistema de transferência instantânea brasileiro. Funciona apenas em apps de bancos do Brasil. Titular: Isaías</div>
 </div>
       </div>
-      ${S.tipMethod&&S.showTipDetail?`<button class="btn-primary" onclick="confirmRequest(true)">✅ DONE! SEND MY REQUEST</button>`:""}
-      <button class="btn-secondary" onclick="confirmRequest(false)" style="background:var(--red);color:white;border:none;padding:18px;font-size:16px;font-weight:700;margin-top:16px;width:100%;border-radius:12px">Not now, send my request 😊</button>
+      <button class="btn-secondary" onclick="goHome()" style="margin-top:16px;width:100%">Not now, maybe later 😊 · Agora não</button>
     </div>
   </div>`;
 }
 
 function copyText(txt,msg){navigator.clipboard.writeText(txt).then(()=>toast(msg)).catch(()=>{const el=document.createElement("textarea");el.value=txt;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);toast(msg);});}
 
-async function confirmRequest(hasTip){
+async function sendRequest(){
+  if(S._sending)return;S._sending=true;
   const songs=S.selectedSongs.length>1?S.selectedSongs:[S.currentSong];
   try{
     const ids=[];
     for(const song of songs){
       if(!song||!song.title)continue;
-      const ref=await db.collection("requests").add({songTitle:song.title,songArtist:song.artist,playlistId:song.playlistId||"",requesterName:S.requesterName.trim()||"Anonymous",message:S.message.trim(),hasTip,tipMethod:hasTip?(S.tipMethod||""):"",status:"pending",adminReaction:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const ref=await db.collection("requests").add({songTitle:song.title,songArtist:song.artist,playlistId:song.playlistId||"",requesterName:S.requesterName.trim()||"Anonymous",message:S.message.trim(),hasTip:false,tipMethod:"",status:"pending",adminReaction:null,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       ids.push(ref.id);
     }
-    S.lastReqIds=ids;S.adminReaction=null;
+    S.lastReqIds=ids;S.adminReaction=null;S.tipMethod=null;S.showTipDetail=false;
     goTo("confirm");startReactionListener();
   }catch(e){toast("Error sending request. Try again.");}
+  finally{S._sending=false;}
+}
+
+function selectTipOnConfirm(m){
+  S.tipMethod=m;S.showTipDetail=true;render();
+  try{(S.lastReqIds||[]).forEach(id=>db.collection("requests").doc(id).update({hasTip:true,tipMethod:m}).catch(()=>{}));}catch(e){}
 }
 
 function renderConfirm(){
   const multi=S.selectedSongs.length>1;
   const count=multi?S.selectedSongs.length:1;
-  return`<div class="confirm-screen fade-in">
-    <div class="confirm-icon">🤘</div>
-    <div class="confirm-title">${count>1?count+" Requests":"Request"} Sent!</div>
-    <p class="confirm-sub"><strong>${S.requesterName}</strong>, Sujeito Rock will play ${count>1?"your songs":"for you"} soon!</p>
+  const isKofi=S.tipMethod==="kofi";
+  const isPaypal=S.tipMethod==="paypal";
+  const isPix=S.tipMethod==="pix";
+  return`<div class="confirm-screen fade-in" style="justify-content:flex-start;padding-top:48px">
+    <div class="confirm-icon">✅</div>
+    <div class="confirm-title">${count>1?count+" Requests":"Request"} Confirmed!</div>
+    <p class="confirm-sub" style="margin-top:-6px;color:var(--red2);font-weight:700">Pedido confirmado! 🤘</p>
+    <p class="confirm-sub"><strong>${S.requesterName}</strong>, Sujeito Rock will play ${count>1?"your songs":"for you"} soon!<br>Sujeito Rock vai tocar ${count>1?"suas músicas":"pra você"} em breve!</p>
+    <div style="width:100%;max-width:420px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;text-align:left">
+      <p style="font-size:14px;line-height:1.6;margin-bottom:6px">💡 <strong>Remember:</strong> if you'd like to send a tip to Sujeito Rock, just tap one of these options:</p>
+      <p style="font-size:13px;line-height:1.5;color:var(--gray2);margin-bottom:16px">Lembre-se: se quiser mandar um tip pro Sujeito Rock, é só clicar numa dessas opções:</p>
+      <div class="tip-opts">
+        <button class="tip-opt-btn ${isKofi?"selected":""}" onclick="selectTipOnConfirm('kofi')"><span class="tip-opt-icon">☕</span>Ko-fi<span class="tip-opt-label">Buy a coffee</span></button>
+        <button class="tip-opt-btn ${isPaypal?"selected":""}" onclick="selectTipOnConfirm('paypal')"><span class="tip-opt-icon">🅿️</span>PayPal<span class="tip-opt-label">Send a tip</span></button>
+        <button class="tip-opt-btn ${isPix?"selected":""}" onclick="selectTipOnConfirm('pix')" style="grid-column:span 2"><span class="tip-opt-icon">⚡</span>Pix<span class="tip-opt-label">Brazilian bank transfer</span></button>
+      </div>
+      <div class="tip-detail-box ${isKofi&&S.showTipDetail?"show":""}">
+        <div class="tip-key-label">Ko-fi link</div>
+        <div class="tip-key-value">ko-fi.com/O4O01XPAZR</div>
+        <a href="https://ko-fi.com/O4O01XPAZR" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center">☕ OPEN KO-FI</a>
+      </div>
+      <div class="tip-detail-box ${isPaypal&&S.showTipDetail?"show":""}">
+        <div class="tip-key-label">PayPal Donate</div>
+        <div class="tip-key-value" style="font-size:13px">Choose your currency</div>
+        <a href="https://www.paypal.com/donate/?hosted_button_id=GSJMKQDLSF7PS" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center;margin-top:10px">💵 TIP IN USD</a>
+        <a href="https://www.paypal.com/donate/?hosted_button_id=SXYYB7YL8U24Y" target="_blank" class="btn-primary" style="display:block;text-decoration:none;text-align:center;margin-top:10px;background:linear-gradient(135deg,#003399,#002266)">💶 TIP IN EUR</a>
+      </div>
+      <div class="tip-detail-box ${isPix&&S.showTipDetail?"show":""}">
+        <div class="tip-key-label">Chave Pix (somente Brasil)</div>
+        <div class="tip-key-value">valeu@sujeitorock.com.br</div>
+        <button class="copy-btn" onclick="copyText('valeu@sujeitorock.com.br','Chave Pix copiada!')">📋 Copiar chave Pix</button>
+        <div class="pix-note-en" style="margin-top:10px">⚡ Pix é o sistema de transferência instantânea brasileiro. Funciona apenas em apps de bancos do Brasil. Titular: Isaías</div>
+      </div>
+    </div>
+    <p class="confirm-sub" style="font-size:14px">Thank you for your request! · Obrigado pelo pedido! 🙏🎸</p>
     <div class="confirm-fb">📘 Follow on <a href="https://www.facebook.com/profile.php?id=100095236781846" target="_blank" style="color:#4267B2;text-decoration:none">Facebook SL</a></div>
     <button class="btn-primary" onclick="goHome()" style="max-width:280px">🎵 REQUEST ANOTHER SONG</button>
-    <button class="btn-secondary" onclick="window.open('https://www.facebook.com/profile.php?id=100095236781846','_blank')" style="max-width:280px">📘 Open Facebook</button>
   </div>`;
 }
 
@@ -838,6 +886,7 @@ function renderAdminConfig(){
 // ══ ACTIONS ══
 function openPlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!pl)return;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];goTo("playlist",{currentPlaylist:pl});}
 function selectSong(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;S.selectedSongs=[];S.currentSong=s;S.requesterName="";S.message="";S.tipMethod=null;S.showTipDetail=false;goTo("step1");}
+function openRecent(){const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);S.currentPlaylist={id:"__recent__",name:"Recently Added",emoji:"⚡"};S.songs["__recent__"]=recent;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S.screen="playlist";render();window.scrollTo(0,0);}
 function openAllSongs(){const a=S.allSongs.filter(s=>s.visible!==false);const grouped={};a.forEach(s=>{if(!grouped[s.artist])grouped[s.artist]=[];grouped[s.artist].push(s);});const sorted=Object.keys(grouped).sort().map(artist=>({artist,songs:grouped[artist]}));S.currentPlaylist={id:"__all__",name:"All Songs",emoji:"🎵"};S.songs["__all__"]=a;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S._groupedByArtist=sorted;S.screen="playlist";render();}
 function toggleSelMode(){S.selectionMode=!S.selectionMode;if(!S.selectionMode)S.selectedSongs=[];render();}
 function toggleSongSel(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;const idx=S.selectedSongs.findIndex(x=>x.id===sId);if(idx>=0)S.selectedSongs.splice(idx,1);else S.selectedSongs.push(s);render();}
