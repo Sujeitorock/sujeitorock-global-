@@ -836,7 +836,10 @@ function renderAdminSongs(){
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
     <span style="font-size:13px;color:var(--gray2);font-weight:700">${songs.length} songs</span>
-    ${songs.length>0?`<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">>${bulk?"✕ Cancel":"☑ Select"}</button>${bulk?`<button class="select-toggle" onclick="selectAllSongs()">✅ All</button>`:""}`:""}
+    <div style="display:flex;gap:6px;align-items:center">
+      ${songs.length>0?`<button class="select-toggle danger" style="border-color:rgba(192,57,43,.5);color:var(--red2)" onclick="clearPlaylistSongs('${S.adminSongsPl}')">🧹 Limpar</button>`:""}
+      ${songs.length>0?`<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">${bulk?"✕ Cancel":"☑ Select"}</button>${bulk?`<button class="select-toggle" onclick="selectAllSongs()">✅ All</button>`:""}`:""}
+    </div>
   </div>
   <div style="${bulk?"padding-bottom:120px":""}">
     ${songRows}
@@ -1058,6 +1061,18 @@ function cycleArtist(){const artists=getArtists();if(!artists.length){toast("No 
 function toggleMoveSong(sId){S._movingSong=S._movingSong===sId?null:sId;renderAdmin();}
 async function moveSongToPlaylist(fromPlId,sId,toPlId){const song=(S.songs[fromPlId]||[]).find(x=>x.id===sId);if(!song){toast("Song not found.");return;}toast("Moving song...");try{await db.collection("playlists").doc(toPlId).collection("songs").doc(sId).set({title:song.title,artist:song.artist,visible:song.visible!==false,addedAt:firebase.firestore.FieldValue.serverTimestamp()});await db.collection("playlists").doc(fromPlId).collection("songs").doc(sId).delete();S.songs[fromPlId]=(S.songs[fromPlId]||[]).filter(x=>x.id!==sId);const toPl=S.playlists.find(p=>p.id===toPlId);const ns={...song,playlistId:toPlId,playlistName:toPl?.name||""};if(!S.songs[toPlId])S.songs[toPlId]=[];S.songs[toPlId].push(ns);const ai=S.allSongs.findIndex(x=>x.id===sId&&x.playlistId===fromPlId);if(ai>=0)S.allSongs[ai]={...S.allSongs[ai],playlistId:toPlId,playlistName:toPl?.name||""};S._movingSong=null;toast("Song moved to "+toPl?.name+"! ✅");renderAdmin();}catch(err){toast("Error moving. Try again.");}}
 async function saveConfig(){const pix=document.getElementById("cfg-pix")?.value.trim();S.config={...S.config,pixKey:pix};try{await db.collection("config").doc("main").set(S.config);toast("Settings saved! ✅");}catch(e){toast("Error saving.");}}
+async function clearPlaylistSongs(plId){
+  const pl=S.playlists.find(p=>p.id===plId);
+  if(!confirm(`Apagar TODAS as ${(S.songs[plId]||[]).length} músicas de "${pl?.name||""}"?\n\nNão dá pra desfazer!`))return;
+  toast("Apagando...");
+  const snap=await db.collection("playlists").doc(plId).collection("songs").get();
+  for(const d of snap.docs){await db.collection("playlists").doc(plId).collection("songs").doc(d.id).delete();}
+  S.songs[plId]=[];
+  S.allSongs=S.allSongs.filter(x=>x.playlistId!==plId);
+  S.adminBulkSel=[];S.adminBulkMode=false;
+  toast(`Pronto! "${pl?.name}" limpa ✅`);
+  setTimeout(()=>renderAdmin(),400);
+}
 async function resetCatalog(){
   if(!confirm("Tem CERTEZA?\n\nIsso apaga TODAS as músicas de TODAS as playlists, deixando elas vazias (prontas pra importar).\n\nNão dá pra desfazer!"))return;
   if(!confirm("Última confirmação: apagar todas as músicas mesmo?"))return;
