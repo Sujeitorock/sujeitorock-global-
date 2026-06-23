@@ -173,6 +173,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-grad
 .tip-key-value{font-size:15px;font-weight:600;word-break:break-all;margin-bottom:10px}
 .copy-btn{background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.3);border-radius:8px;padding:8px 16px;color:var(--red2);font-family:"Barlow",sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s}
 .copy-btn:hover{background:rgba(192,57,43,0.25)}
+.copy-title-btn{background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.35);color:var(--red2);font-size:11px;font-weight:700;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Barlow',sans-serif;margin-left:8px;white-space:nowrap}
+.copy-title-btn:hover{background:rgba(192,57,43,0.3)}
 .pix-note-en{font-size:11px;color:var(--gray);margin-top:8px;font-style:italic}
 
 /* PIX QR */
@@ -360,7 +362,8 @@ const S={
   _plSearch:"",_movingSong:null,_prevReqCount:-1,
   reqListener:null,wishListener:null,_reactionListener:null,
   showsData:null,showsLoaded:false,showsError:null,
-  adminBulkSel:[],adminBulkMode:false
+  adminBulkSel:[],adminBulkMode:false,
+  reportItems:[],reportLoading:false,_reportOpen:null
 };
 let playlistsLoaded=false;
 
@@ -436,7 +439,7 @@ function render(){
   attachEvents();
 }
 
-const BTN_IMG={"recentlyadded":"newly-added.jpg","newlyadded":"newly-added.jpg","nationals":"nationals.jpg","nacionais":"nationals.jpg","80s":"80s.jpg","lovesongs":"love-songs.jpg","lovesong":"love-songs.jpg","90s":"90s.jpg","2000s":"2000s.jpg","alternativerock":"alt-rock.jpg","alternativesrock":"alt-rock.jpg","punkrockpop":"punk-rock-pop.jpg","punkrocksongs":"punk-rock-pop.jpg","punkrocksong":"punk-rock-pop.jpg","allsongs":"all-songs.jpg","soundtrackmovies":"soundtrack.jpg","soudntrackmovies":"soundtrack.jpg","soundtrackmovie":"soundtrack.jpg","hardrockmetal":"hard-rock-metal.jpg","softsongs":"soft-songs.jpg","softsong":"soft-songs.jpg","acousticshow":"acoustic.jpg","acousticsongs":"acoustic.jpg","acoustic":"acoustic.jpg"};
+const BTN_IMG={"recentlyadded":"newly-added.jpg","newlyadded":"newly-added.jpg","nationals":"nationals.jpg","nacionais":"nationals.jpg","70s":"70s.png","80s":"80s.jpg","lovesongs":"love-songs.jpg","lovesong":"love-songs.jpg","90s":"90s.jpg","2000s":"2000s.jpg","alternativerock":"alt-rock.jpg","alternativesrock":"alt-rock.jpg","punkrockpop":"punk-rock-pop.jpg","punkrocksongs":"punk-rock-pop.jpg","punkrocksong":"punk-rock-pop.jpg","allsongs":"all-songs.jpg","soundtrackmovies":"soundtrack.jpg","soudntrackmovies":"soundtrack.jpg","soundtrackmovie":"soundtrack.jpg","hardrockmetal":"hard-rock-metal.jpg","softsongs":"soft-songs.jpg","softsong":"soft-songs.jpg","acousticshow":"acoustic.jpg","acousticsongs":"acoustic.jpg","acoustic":"acoustic.jpg"};
 function btnImg(name){if(!name)return null;return BTN_IMG[name.toLowerCase().replace(/[^a-z0-9]/g,"")]||null;}
 function plCard(onclick,name,emoji,count,special){
   const img=btnImg(name);
@@ -540,8 +543,8 @@ function renderPlaylist(){
   
   function songRow(s,i){
     const sel=selIds.has(s.id);
-    if(selMode){return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div></div>`;}
-    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div><span class="song-arrow">›</span></div>`;
+    if(selMode){return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${esc(s.artist)}</div><div class="song-artist">${esc(s.title)}</div></div></div>`;}
+    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${esc(s.artist)}</div><div class="song-artist">${esc(s.title)}</div></div><span class="song-arrow">›</span></div>`;
   }
   
   let songsHtml="";
@@ -572,8 +575,8 @@ function filterPl(q){
   const selMode=S.selectionMode;const selIds=new Set(S.selectedSongs.map(x=>x.id));
   sl.innerHTML=(filtered.length===0?'<div class="empty-state"><p>No songs found.</p></div>':"")+filtered.map((s,i)=>{
     const sel=selIds.has(s.id);
-    if(selMode)return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div></div>`;
-    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${s.artist}</div><div class="song-artist">${s.title}</div></div><span class="song-arrow">›</span></div>`;
+    if(selMode)return`<div class="song-item ${sel?"song-selected":""}" onclick="toggleSongSel('${s.playlistId}','${s.id}')"><div class="song-check">${sel?"✓":""}</div><div class="song-info"><div class="song-title">${esc(s.artist)}</div><div class="song-artist">${esc(s.title)}</div></div></div>`;
+    return`<div class="song-item" onclick="selectSong('${s.playlistId}','${s.id}')"><div class="song-num">${i+1}</div><div class="song-info"><div class="song-title">${esc(s.artist)}</div><div class="song-artist">${esc(s.title)}</div></div><span class="song-arrow">›</span></div>`;
   }).join("");
 }
 
@@ -583,13 +586,13 @@ function renderStep1(){
   if(!multi&&!s)return"";
   const songPreview=multi
     ?`<div class="step-song-card" style="flex-direction:column;align-items:flex-start;gap:8px"><div style="font-size:13px;font-weight:700;color:var(--red2);text-transform:uppercase;letter-spacing:1px">${S.selectedSongs.length} songs selected</div>${S.selectedSongs.map(x=>`<div style="font-size:14px"><strong>${x.title}</strong> <span style="color:var(--gray2)">— ${x.artist}</span></div>`).join("")}</div>`
-    :`<div class="step-song-card"><div class="step-song-icon">🎵</div><div><div class="step-song-title">${s.title}</div><div class="step-song-artist">${s.artist}</div></div></div>`;
+    :`<div class="step-song-card"><div class="step-song-icon">🎵</div><div><div class="step-song-title">${esc(s.title)}</div><div class="step-song-artist">${esc(s.artist)}</div></div></div>`;
   return`<div class="screen fade-in">
     <div class="screen-header"><button class="back-btn" onclick="goBack()">←</button><div class="screen-header-info"><div class="screen-header-title">Request ${multi?"Songs":"Song"}</div></div></div>
     <div class="step-screen">
       <div class="step-pill">🎸 Almost there!</div>
       ${songPreview}
-      <div class="field"><label>Your name *</label><input type="text" id="inp-name" placeholder="SL username or nickname" value="${S.requesterName}" oninput="S.requesterName=this.value;showAutocomplete('inp-name',getKnownNames(),v=>{S.requesterName=v})" autocomplete="given-name"></div>
+      <div class="field"><label>Your name *</label><input type="text" id="inp-name" placeholder="SL username or nickname" value="${esc(S.requesterName)}" oninput="S.requesterName=this.value;showAutocomplete('inp-name',getKnownNames(),v=>{S.requesterName=v})" autocomplete="given-name"></div>
       <div class="field"><label>Message to Sujeito <span class="optional">(optional)</span></label><textarea id="inp-msg" rows="3" placeholder="Dedications, shoutouts, anything..." oninput="S.message=this.value">${S.message}</textarea></div>
       <button class="btn-primary" onclick="submitStep1()">🤘 REQUEST ${multi?"THESE SONGS":"THIS SONG"}</button>
       <button class="btn-secondary" onclick="goBack()">Choose ${multi?"other":"another"} song${multi?"s":""}</button>
@@ -637,6 +640,7 @@ function renderStep2(){
 }
 
 function copyText(txt,msg){navigator.clipboard.writeText(txt).then(()=>toast(msg)).catch(()=>{const el=document.createElement("textarea");el.value=txt;document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);toast(msg);});}
+function copyFromData(btn){copyText(btn.dataset.copy||"",btn.dataset.msg||"Copied!");}
 
 async function sendRequest(){
   if(S._sending)return;S._sending=true;
@@ -669,7 +673,7 @@ function renderConfirm(){
     <div class="confirm-icon">✅</div>
     <div class="confirm-title">${count>1?count+" Requests":"Request"} Confirmed!</div>
     <p class="confirm-sub" style="margin-top:-6px;color:var(--red2);font-weight:700">Pedido confirmado! 🤘</p>
-    <p class="confirm-sub"><strong>${S.requesterName}</strong>, Sujeito Rock will play ${count>1?"your songs":"for you"} soon!<br>Sujeito Rock vai tocar ${count>1?"suas músicas":"pra você"} em breve!</p>
+    <p class="confirm-sub"><strong>${esc(S.requesterName)}</strong>, Sujeito Rock will play ${count>1?"your songs":"for you"} soon!<br>Sujeito Rock vai tocar ${count>1?"suas músicas":"pra você"} em breve!</p>
     <div style="width:100%;max-width:420px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0;text-align:left">
       <p style="font-size:14px;line-height:1.6;margin-bottom:6px">💡 <strong>Remember:</strong> if you'd like to send a tip to Sujeito Rock, just tap one of these options:</p>
       <p style="font-size:13px;line-height:1.5;color:var(--gray2);margin-bottom:16px">Lembre-se: se quiser mandar um tip pro Sujeito Rock, é só clicar numa dessas opções:</p>
@@ -747,7 +751,7 @@ function renderAdminLogin(){
 
 function renderAdmin(){
   const root=document.getElementById("root");
-  const titles={requests:"Live Requests",playlists:"Setlist / Playlists",songs:"Songs",wishlist:"Wishlist",config:"Settings"};
+  const titles={requests:"Live Requests",playlists:"Setlist / Playlists",songs:"Songs",wishlist:"Wishlist",report:"Pedidos de Hoje",config:"Settings"};
   root.innerHTML=`<div class="admin-screen fade-in">
     <div class="admin-header"><div class="admin-logo">🎸 SR GLOBAL</div><div class="admin-title">${titles[S.adminTab]||""}</div><button class="logout-btn" onclick="doLogout()">Sign Out</button></div>
     <div class="admin-content">${renderAdminContent()}</div>
@@ -756,6 +760,7 @@ function renderAdmin(){
       <button class="admin-nav-btn ${S.adminTab==="playlists"?"active":""}" onclick="setTab('playlists')"><span class="nav-icon">🎵</span>Playlists</button>
       <button class="admin-nav-btn ${S.adminTab==="songs"?"active":""}" onclick="setTab('songs')"><span class="nav-icon">🎤</span>Songs</button>
       <button class="admin-nav-btn ${S.adminTab==="wishlist"?"active":""}" onclick="setTab('wishlist')"><span class="nav-icon">💌</span>Wishlist</button>
+      <button class="admin-nav-btn ${S.adminTab==="report"?"active":""}" onclick="setTab('report')"><span class="nav-icon">📊</span>Report</button>
       <button class="admin-nav-btn ${S.adminTab==="config"?"active":""}" onclick="setTab('config');setTimeout(genQR,100)"><span class="nav-icon">⚙️</span>Settings</button>
     </nav>
   </div>`;
@@ -767,6 +772,7 @@ function renderAdminContent(){
     case"playlists":return renderAdminPlaylists();
     case"songs":return renderAdminSongs();
     case"wishlist":return renderAdminWish();
+    case"report":return renderAdminReport();
     case"config":return renderAdminConfig();
     default:return"";
   }
@@ -778,9 +784,9 @@ function renderAdminRequests(){
   return S.requests.map(r=>{
     const t=r.createdAt?new Date(r.createdAt.toMillis()).toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"}):"";
     return`<div class="request-card ${r.hasTip?"has-tip":""}">
-      <div class="req-header"><div class="req-name">${r.requesterName||"Anonymous"}</div>${r.hasTip?'<span class="tip-badge">💰 '+r.tipMethod.toUpperCase()+'</span>':''}<span class="req-time">${t}</span></div>
-      <div class="req-song">🎵 <strong>${r.songTitle}</strong> — ${r.songArtist}</div>
-      ${r.message?'<div class="req-msg">"'+r.message+'"</div>':""}
+      <div class="req-header"><div class="req-name">${esc(r.requesterName||"Anonymous")}</div>${r.hasTip?'<span class="tip-badge">💰 '+esc((r.tipMethod||"").toUpperCase())+'</span>':''}<span class="req-time">${t}</span></div>
+      <div class="req-song">🎵 <strong>${esc(r.songTitle)}</strong> — ${esc(r.songArtist)}<button class="copy-title-btn" data-copy="${esc(r.songTitle)}" data-msg="Título copiado! 📋" onclick="copyFromData(this)" title="Copiar título da música">📋 Copiar</button></div>
+      ${r.message?'<div class="req-msg">"'+esc(r.message)+'"</div>':""}
       <div class="req-reactions">${REACTIONS.map((rx,i)=>`<button class="reaction-btn${r.adminReaction===rx?" sent":""}" data-reqid="${r.id}" data-ri="${i}" onclick="doReaction(this)">${rx}</button>`).join("")}</div><div style="display:flex;gap:6px;margin-top:6px"><input type="text" id="custom-rx-${r.id}" placeholder="Custom message..." style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--white);font-size:13px;font-family:Barlow,sans-serif;outline:none" onkeydown="if(event.key==='Enter'){sendCustomReaction('${r.id}',this)}"><button class="reaction-btn" onclick="sendCustomReaction('${r.id}',document.getElementById('custom-rx-${r.id}'))" style="flex-shrink:0">Send 🎤</button></div>
       <div class="req-actions"><button class="req-btn req-played" onclick="markPlayed('${r.id}')">✅ Played!</button><button class="req-btn req-dismiss" onclick="dismissReq('${r.id}')">✕ Dismiss</button></div>
     </div>`;
@@ -791,6 +797,10 @@ function renderAdminPlaylists(){
   return`<div class="add-form"><h4>New Playlist</h4>
     <div class="field" style="display:flex;gap:8px"><input type="text" id="new-pl-emoji" placeholder="🎵" style="width:70px"><input type="text" id="new-pl-name" placeholder="Playlist name" style="flex:1"></div>
     <button class="btn-add" onclick="addPlaylist()">+ Add</button>
+  </div>
+  <div class="add-form" style="border:1px solid rgba(192,57,43,0.4)"><h4 style="color:var(--red2)">⚠️ Zona de Perigo</h4>
+    <p style="font-size:12px;color:var(--gray2);margin:0 0 10px">Apaga TODAS as músicas de TODAS as playlists, deixando elas vazias e prontas pra importar. As playlists continuam existindo.</p>
+    <button class="btn-add" style="background:var(--red)" onclick="resetCatalog()">🧹 Limpar todas as músicas</button>
   </div>
   ${S.playlists.length===0?'<div class="empty-state"><div class="empty-icon">🎵</div><p>No playlists yet. Add one above!</p></div>':
   S.playlists.map(pl=>`<div class="admin-pl-item"><span style="font-size:24px">${pl.emoji||"🎵"}</span><div style="flex:1"><div class="admin-pl-name">${pl.name}</div><div class="admin-pl-count">${(S.songs[pl.id]||[]).length} songs</div></div><button class="manage-btn" onclick="setTab('songs','${pl.id}')">Songs</button><button class="delete-pl-btn" onclick="deletePlaylist('${pl.id}')" title="Delete">🗑</button><div class="toggle ${pl.visible!==false?"on":""}" onclick="togglePl('${pl.id}',${pl.visible!==false})"></div></div>`).join("")}`;
@@ -808,10 +818,10 @@ function renderAdminSongs(){
   const sorted2=(()=>{const g={};songs.forEach(s=>{if(!g[s.artist])g[s.artist]=[];g[s.artist].push(s);});return Object.keys(g).sort().flatMap(a=>g[a]);})();const songRows=sorted2.length===0?'<div class="empty-state"><div class="empty-icon">🎤</div><p>No songs in this playlist.</p></div>':sorted2.map(s=>{
     const isSel=bulkIds.has(s.id);
     if(bulk){
-      return`<div class="admin-song-item ${isSel?"bulk-selected":""}" onclick="toggleAdminSongSel('${s.id}','${S.adminSongsPl}')"><div class="admin-song-cb">${isSel?"✓":""}</div><div class="admin-song-info"><div class="admin-song-title">${s.artist}</div><div class="admin-song-artist">${s.title}</div></div></div>`;
+      return`<div class="admin-song-item ${isSel?"bulk-selected":""}" onclick="toggleAdminSongSel('${s.id}','${S.adminSongsPl}')"><div class="admin-song-cb">${isSel?"✓":""}</div><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div></div></div>`;
     }
     const isMoving=S._movingSong===s.id;
-    return`<div class="admin-song-item ${s.visible===false?"hidden-song":""}"><div class="admin-song-info"><div class="admin-song-title">${s.artist}</div><div class="admin-song-artist">${s.title}</div></div><button class="song-move-btn ${isMoving?"active":""}" onclick="toggleMoveSong('${s.id}')">↗ Move</button><button class="song-del-btn" onclick="deleteSong('${S.adminSongsPl}','${s.id}')">🗑</button><div class="toggle ${s.visible!==false?"on":""}" onclick="toggleSong('${S.adminSongsPl}','${s.id}',${s.visible!==false})"></div></div>${isMoving?`<div class="move-song-panel"><div class="move-song-panel-title">Move to:</div><div class="move-pl-pills">${otherPls.length===0?'<span style="color:var(--gray);font-size:12px">Create another playlist first</span>':otherPls.map(p=>`<button class="move-pl-pill" onclick="moveSongToPlaylist('${S.adminSongsPl}','${s.id}','${p.id}')">${p.emoji||"🎵"} ${p.name}</button>`).join("")}</div></div>`:""}`; 
+    return`<div class="admin-song-item ${s.visible===false?"hidden-song":""}"><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div></div><button class="song-move-btn ${isMoving?"active":""}" onclick="toggleMoveSong('${s.id}')">↗ Move</button><button class="song-del-btn" onclick="deleteSong('${S.adminSongsPl}','${s.id}')">🗑</button><div class="toggle ${s.visible!==false?"on":""}" onclick="toggleSong('${S.adminSongsPl}','${s.id}',${s.visible!==false})"></div></div>${isMoving?`<div class="move-song-panel"><div class="move-song-panel-title">Move to:</div><div class="move-pl-pills">${otherPls.length===0?'<span style="color:var(--gray);font-size:12px">Create another playlist first</span>':otherPls.map(p=>`<button class="move-pl-pill" onclick="moveSongToPlaylist('${S.adminSongsPl}','${s.id}','${p.id}')">${p.emoji||"🎵"} ${p.name}</button>`).join("")}</div></div>`:""}`; 
   }).join("");
   return`${plPills}
   <div class="bulk-section"><h4>📋 Bulk Import</h4>
@@ -991,7 +1001,7 @@ async function doLogin(){
   }catch(e){if(err){err.style.display="block";err.textContent="Incorrect email or password.";}}
 }
 async function doLogout(){localStorage.removeItem("sr_was_admin");await auth.signOut();S.isAdmin=false;if(S.reqListener)S.reqListener();if(S.wishListener)S.wishListener();goHome();}
-function setTab(tab,plId){S.adminTab=tab;if(plId)S.adminSongsPl=plId;renderAdmin();}
+function setTab(tab,plId){S.adminTab=tab;if(plId)S.adminSongsPl=plId;renderAdmin();if(tab==="report")loadReport();}
 async function markPlayed(id){try{await db.collection("requests").doc(id).update({status:"played"});toast("Marked as played! 🎸");}catch(e){toast("Error.");}}
 async function dismissReq(id){try{await db.collection("requests").doc(id).update({status:"dismissed"});}catch(e){toast("Error.");}}
 const _REACTIONS=["🤘","Yeaaah!","Great song!","On it!","Nice taste!","🔥 Classic!"];
@@ -999,7 +1009,7 @@ function doReaction(btn){const id=btn.dataset.reqid;const reaction=_REACTIONS[pa
 async function sendReaction(id,reaction){try{await db.collection("requests").doc(id).update({adminReaction:reaction,reactionAt:firebase.firestore.FieldValue.serverTimestamp()});toast("Reaction sent! "+reaction);}catch(e){toast("Error.");}}
 function sendCustomReaction(id,inp){const msg=inp.value.trim();if(!msg){inp.focus();return;}const req=S.requests.find(r=>r.id===id);if(req){req.adminReaction=msg;renderAdmin();}sendReaction(id,msg);}
 async function addPlaylist(){const emoji=document.getElementById("new-pl-emoji")?.value.trim()||"🎵";const name=document.getElementById("new-pl-name")?.value.trim();if(!name){toast("Enter playlist name!");return;}try{const ref=await db.collection("playlists").add({name,emoji,visible:true,order:S.playlists.length,createdAt:firebase.firestore.FieldValue.serverTimestamp()});S.playlists.push({id:ref.id,name,emoji,visible:true,order:S.playlists.length});S.songs[ref.id]=[];toast("Playlist created! 🎵");renderAdmin();}catch(e){toast("Error.");}}
-async function addSong(){const title=document.getElementById("new-s-title")?.value.trim();const artist=document.getElementById("new-s-artist")?.value.trim();const plId=S.adminSongsPl;if(!title||!artist){toast("Fill in song title and artist!");return;}if(!plId){toast("Select a playlist!");return;}try{const ref=await db.collection("playlists").doc(plId).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});const ns={id:ref.id,title,artist,visible:true,playlistId:plId,playlistName:S.playlists.find(p=>p.id===plId)?.name};if(!S.songs[plId])S.songs[plId]=[];S.songs[plId].push(ns);S.allSongs.push(ns);document.getElementById("new-s-title").value="";toast("Song added! 🎤");renderAdmin();}catch(e){toast("Error.");}}
+async function addSong(){const title=document.getElementById("new-s-title")?.value.trim();const artist=document.getElementById("new-s-artist")?.value.trim();const plId=S.adminSongsPl;if(!title||!artist){toast("Fill in song title and artist!");return;}if(!plId){toast("Select a playlist!");return;}if((S.songs[plId]||[]).some(x=>(x.title||"").trim().toLowerCase()===title.toLowerCase()&&(x.artist||"").trim().toLowerCase()===artist.toLowerCase())){toast("⚠️ Essa música já está nessa playlist!");return;}try{const ref=await db.collection("playlists").doc(plId).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});const ns={id:ref.id,title,artist,visible:true,playlistId:plId,playlistName:S.playlists.find(p=>p.id===plId)?.name};if(!S.songs[plId])S.songs[plId]=[];S.songs[plId].push(ns);S.allSongs.push(ns);document.getElementById("new-s-title").value="";toast("Song added! 🎤");renderAdmin();}catch(e){toast("Error.");}}
 async function deleteSong(plId,sId){if(!confirm("Delete this song?"))return;try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).delete();S.songs[plId]=(S.songs[plId]||[]).filter(x=>x.id!==sId);S.allSongs=S.allSongs.filter(x=>!(x.id===sId&&x.playlistId===plId));toast("Song deleted! 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 async function deletePlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!confirm('Delete playlist "'+( pl?.name||"")+'"?\n\nSongs will remain in All Songs.'))return;try{await db.collection("playlists").doc(plId).delete();S.playlists=S.playlists.filter(p=>p.id!==plId);if(S.songs[plId]){S.songs[plId].forEach(s=>{s.playlistId="";s.playlistName="";const ai=S.allSongs.findIndex(x=>x.id===s.id);if(ai>=0){S.allSongs[ai].playlistId="";S.allSongs[ai].playlistName="";}});}delete S.songs[plId];if(S.adminSongsPl===plId)S.adminSongsPl=S.playlists[0]?.id||null;toast("Playlist deleted! Songs kept in All Songs 🗑");renderAdmin();}catch(e){toast("Error.");}}
@@ -1024,13 +1034,14 @@ async function importBulk(){
     return;
   }
   toast("Importing "+validLines.length+" songs...");
-  let ok=0;
+  let ok=0;let dup=0;
   for(const line of validLines){
     const sep = line.indexOf(" - ");
     if(sep===-1) continue;
     const title = line.substring(0, sep).trim();
     const artist = line.substring(sep+3).trim();
     if(!title || !artist) continue;
+    if((S.songs[S.adminSongsPl]||[]).some(x=>(x.title||"").trim().toLowerCase()===title.toLowerCase()&&(x.artist||"").trim().toLowerCase()===artist.toLowerCase())){dup++;continue;}
     try{
       const ref = await db.collection("playlists").doc(S.adminSongsPl).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});
       const ns = {id:ref.id,title,artist,visible:true,playlistId:S.adminSongsPl,playlistName:S.playlists.find(p=>p.id===S.adminSongsPl)?.name};
@@ -1040,13 +1051,64 @@ async function importBulk(){
       ok++;
     }catch(e){}
   }
-  toast(ok+" songs imported! 🎤");
+  toast(ok+" músicas importadas! "+(dup?"("+dup+" duplicadas ignoradas) ":"")+"🎤");
   setTimeout(()=>renderAdmin(),500);
 }
 function cycleArtist(){const artists=getArtists();if(!artists.length){toast("No artists yet.");return;}const inp=document.getElementById("new-s-artist");if(!inp)return;const cur=inp.value;const idx=artists.indexOf(cur);inp.value=artists[(idx+1)%artists.length];}
 function toggleMoveSong(sId){S._movingSong=S._movingSong===sId?null:sId;renderAdmin();}
 async function moveSongToPlaylist(fromPlId,sId,toPlId){const song=(S.songs[fromPlId]||[]).find(x=>x.id===sId);if(!song){toast("Song not found.");return;}toast("Moving song...");try{await db.collection("playlists").doc(toPlId).collection("songs").doc(sId).set({title:song.title,artist:song.artist,visible:song.visible!==false,addedAt:firebase.firestore.FieldValue.serverTimestamp()});await db.collection("playlists").doc(fromPlId).collection("songs").doc(sId).delete();S.songs[fromPlId]=(S.songs[fromPlId]||[]).filter(x=>x.id!==sId);const toPl=S.playlists.find(p=>p.id===toPlId);const ns={...song,playlistId:toPlId,playlistName:toPl?.name||""};if(!S.songs[toPlId])S.songs[toPlId]=[];S.songs[toPlId].push(ns);const ai=S.allSongs.findIndex(x=>x.id===sId&&x.playlistId===fromPlId);if(ai>=0)S.allSongs[ai]={...S.allSongs[ai],playlistId:toPlId,playlistName:toPl?.name||""};S._movingSong=null;toast("Song moved to "+toPl?.name+"! ✅");renderAdmin();}catch(err){toast("Error moving. Try again.");}}
 async function saveConfig(){const pix=document.getElementById("cfg-pix")?.value.trim();S.config={...S.config,pixKey:pix};try{await db.collection("config").doc("main").set(S.config);toast("Settings saved! ✅");}catch(e){toast("Error saving.");}}
+async function resetCatalog(){
+  if(!confirm("Tem CERTEZA?\n\nIsso apaga TODAS as músicas de TODAS as playlists, deixando elas vazias (prontas pra importar).\n\nNão dá pra desfazer!"))return;
+  if(!confirm("Última confirmação: apagar todas as músicas mesmo?"))return;
+  toast("Limpando catálogo...");
+  let plOk=0,songsDel=0;
+  for(const pl of S.playlists){
+    try{
+      const snap=await db.collection("playlists").doc(pl.id).collection("songs").get();
+      for(const d of snap.docs){await db.collection("playlists").doc(pl.id).collection("songs").doc(d.id).delete();songsDel++;}
+      S.songs[pl.id]=[];
+      plOk++;
+    }catch(e){}
+  }
+  S.allSongs=[];
+  toast("Pronto! "+songsDel+" músicas apagadas em "+plOk+" playlists ✅");
+  setTimeout(()=>renderAdmin(),600);
+}
+async function loadReport(){
+  S.reportLoading=true;if(S.isAdmin&&S.adminTab==="report")renderAdmin();
+  try{
+    const start=new Date();start.setHours(0,0,0,0);
+    const snap=await db.collection("requests").where("createdAt",">=",firebase.firestore.Timestamp.fromDate(start)).get();
+    S.reportItems=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+  }catch(e){S.reportItems=[];toast("Erro ao carregar relatório: "+e.message,4000);}
+  S.reportLoading=false;
+  if(S.isAdmin&&S.adminTab==="report")renderAdmin();
+}
+function reportToggle(gi){S._reportOpen=S._reportOpen===gi?null:gi;renderAdmin();}
+function renderAdminReport(){
+  if(S.reportLoading)return'<div class="empty-state"><div class="empty-icon">⏳</div><p>Carregando relatório...</p></div>';
+  const items=S.reportItems||[];
+  const dateStr=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+  const head=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div><div style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px">${items.length} pedido${items.length!==1?"s":""} hoje</div><div style="font-size:12px;color:var(--gray2);text-transform:capitalize">${esc(dateStr)}</div></div><button class="select-toggle" onclick="loadReport()">🔄 Atualizar</button></div>`;
+  if(items.length===0)return head+'<div class="empty-state"><div class="empty-icon">📊</div><p>Nenhum pedido ainda hoje.</p></div>';
+  const groups={};
+  items.forEach(r=>{const key=(r.songTitle||"?")+"|||"+(r.songArtist||"");if(!groups[key])groups[key]={title:r.songTitle||"?",artist:r.songArtist||"",reqs:[]};groups[key].reqs.push(r);});
+  const arr=Object.values(groups).sort((a,b)=>b.reqs.length-a.reqs.length);
+  return head+arr.map((g,gi)=>{
+    const open=S._reportOpen===gi;
+    const people=open?`<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">${g.reqs.map(r=>{const d=r.createdAt?new Date(r.createdAt.toMillis()):null;const tm=d?d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"--:--";const dt=d?d.toLocaleDateString("pt-BR"):"";return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px"><span style="color:var(--red2);font-weight:700;min-width:46px">${tm}</span><span style="flex:1">${esc(r.requesterName||"Anonymous")}</span><span style="color:var(--gray);font-size:11px">${esc(dt)}</span></div>`;}).join("")}</div>`:"";
+    return`<div class="admin-pl-item" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="reportToggle(${gi})">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="background:var(--red);color:#fff;min-width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${g.reqs.length}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">${esc(g.title)}</div><div style="font-size:12px;color:var(--gray2)">${esc(g.artist)}</div></div>
+        <button class="copy-title-btn" data-copy="${esc(g.title)}" data-msg="Título copiado! 📋" onclick="event.stopPropagation();copyFromData(this)" title="Copiar título">📋</button>
+        <span style="color:var(--gray);font-size:18px">${open?"▲":"▼"}</span>
+      </div>
+      ${people}
+    </div>`;
+  }).join("");
+}
 function genQR(){const c=document.getElementById("qr-container");if(!c)return;const url="https://sl.sujeitorock.com.br";const qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&data="+encodeURIComponent(url);const qrUrlHD="https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data="+encodeURIComponent(url);c.innerHTML='<img src="'+qrUrl+'" style="width:180px;height:180px;border-radius:8px" alt="QR Code"><br><a href="'+qrUrlHD+'" download="qr-sujeitorock-sl.png" style="color:var(--red2);font-size:12px;text-decoration:none;display:inline-block;margin-top:8px">⬇️ Download QR</a>';}
 
 // ══ SHOWS ══
