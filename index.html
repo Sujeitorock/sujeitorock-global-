@@ -439,7 +439,7 @@ function render(){
   attachEvents();
 }
 
-const BTN_IMG={"recentlyadded":"newly-added.jpg","newlyadded":"newly-added.jpg","nationals":"nationals.jpg","nacionais":"nationals.jpg","70s":"70s.png","80s":"80s.jpg","lovesongs":"love-songs.jpg","lovesong":"love-songs.jpg","90s":"90s.jpg","2000s":"2000s.jpg","alternativerock":"alt-rock.jpg","alternativesrock":"alt-rock.jpg","punkrockpop":"punk-rock-pop.jpg","punkrocksongs":"punk-rock-pop.jpg","punkrocksong":"punk-rock-pop.jpg","allsongs":"all-songs.jpg","soundtrackmovies":"soundtrack.jpg","soudntrackmovies":"soundtrack.jpg","soundtrackmovie":"soundtrack.jpg","hardrockmetal":"hard-rock-metal.jpg","softsongs":"soft-songs.jpg","softsong":"soft-songs.jpg","acousticshow":"acoustic.jpg","acousticsongs":"acoustic.jpg","acoustic":"acoustic.jpg"};
+const BTN_IMG={"recentlyadded":"newly-added.jpg","newlyadded":"newly-added.jpg","nationals":"nationals.jpg","nacionais":"nationals.jpg","70s":"70.png","80s":"80s.jpg","lovesongs":"love-songs.jpg","lovesong":"love-songs.jpg","90s":"90s.jpg","2000s":"2000s.jpg","alternativerock":"alt-rock.jpg","alternativesrock":"alt-rock.jpg","punkrockpop":"punk-rock-pop.jpg","punkrocksongs":"punk-rock-pop.jpg","punkrocksong":"punk-rock-pop.jpg","allsongs":"all-songs.jpg","soundtrackmovies":"soundtrack.jpg","soudntrackmovies":"soundtrack.jpg","soundtrackmovie":"soundtrack.jpg","hardrockmetal":"hard-rock-metal.jpg","softsongs":"soft-songs.jpg","softsong":"soft-songs.jpg","acousticshow":"acoustic.jpg","acousticsongs":"acoustic.jpg","acoustic":"acoustic.jpg"};
 function btnImg(name){if(!name)return null;return BTN_IMG[name.toLowerCase().replace(/[^a-z0-9]/g,"")]||null;}
 function plCard(onclick,name,emoji,count,special){
   const img=btnImg(name);
