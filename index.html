@@ -89,6 +89,15 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-grad
 .playlist-card-img{padding:0;display:flex;flex-direction:column;background:var(--bg3)}
 .playlist-card-img img{display:block;width:100%;height:auto;border-radius:var(--radius) var(--radius) 0 0}
 .playlist-card-img .playlist-count{margin:0;padding:5px 10px 7px;text-align:right}
+.solo-playlist-card{grid-column:1/-1;cursor:pointer;position:relative;overflow:hidden;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.45);background:var(--bg3);min-height:220px;display:flex;flex-direction:column;justify-content:flex-end;transition:all 0.2s}
+.solo-playlist-card:active{transform:scale(0.98)}
+.solo-playlist-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55}
+.solo-playlist-card::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,0.9) 100%)}
+.solo-playlist-badge{position:relative;z-index:1;align-self:flex-start;margin:16px 0 0 16px;background:#f1c40f;color:#1a1a1a;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:20px}
+.solo-playlist-info{position:relative;z-index:1;padding:16px 20px 22px}
+.solo-playlist-name{font-family:"Bebas Neue",cursive;font-size:34px;letter-spacing:1px;color:#fff;line-height:1.05}
+.solo-playlist-count{font-size:13px;color:var(--gray2);margin-top:4px}
+.solo-playlist-cta{margin-top:12px;display:inline-flex;align-items:center;gap:6px;color:var(--red2);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.5px}
 
 /* FOOTER */
 .home-footer{margin-top:auto;padding:24px 20px 36px;border-top:1px solid var(--border)}
@@ -278,8 +287,6 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-grad
 .admin-pl-count{font-size:12px;color:var(--gray2)}
 .manage-btn{background:none;border:1px solid var(--border);color:var(--gray2);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:"Barlow",sans-serif;transition:all 0.2s}
 .manage-btn:hover{border-color:var(--red2);color:var(--red2)}
-.solo-pl-btn{background:none;border:1px solid var(--border);color:var(--gray2);padding:5px 9px;border-radius:6px;font-size:13px;cursor:pointer;font-family:"Barlow",sans-serif;transition:all 0.2s}
-.solo-pl-btn:hover{border-color:#f1c40f;color:#f1c40f;background:rgba(241,196,15,0.1)}
 .toggle{width:42px;height:24px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s}
 .toggle::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--gray);transition:all 0.2s}
 .toggle.on{background:rgba(192,57,43,0.3);border-color:var(--red)}
@@ -448,6 +455,20 @@ function plCard(onclick,name,emoji,count,special){
   if(img)return`<div class="playlist-card playlist-card-img" onclick="${onclick}"><img src="${img}" alt="${name}" loading="lazy"><div class="playlist-count">${count} songs</div></div>`;
   return`<div class="playlist-card ${special?"special":""}" onclick="${onclick}"><span class="playlist-emoji">${emoji}</span><div class="playlist-name">${name}</div><div class="playlist-count">${count} songs</div></div>`;
 }
+// Card grande em destaque, usado quando só uma playlist está visível (ex: modo acústico) — evita a tela ficar vazia com um único card pequeno.
+function soloPlaylistCard(pl){
+  const img=btnImg(pl.name);
+  const count=(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length;
+  return`<div class="solo-playlist-card" onclick="openPlaylist('${pl.id}')">
+    ${img?`<img src="${img}" alt="${pl.name}">`:""}
+    <div class="solo-playlist-badge">🎸 Live Now</div>
+    <div class="solo-playlist-info">
+      <div class="solo-playlist-name">${pl.emoji?pl.emoji+" ":""}${pl.name}</div>
+      <div class="solo-playlist-count">${count} songs</div>
+      <div class="solo-playlist-cta">Tap to see the setlist →</div>
+    </div>
+  </div>`;
+}
 function renderHome(){
   const playlists=S.playlists.filter(p=>p.visible!==false);
   const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);
@@ -477,8 +498,9 @@ function renderHome(){
       ${(!playlistsLoaded&&playlists.length===0)?'<div class="loading"><div class="spinner"></div></div>':""}
       ${(playlists.length>0||recent.length>0)?'<p class="section-title">Setlist</p>':""}
       <div class="playlists-grid">
-        ${recent.length>0?plCard("openRecent()","Recently Added","⚡",recent.length,true)+plCard("openAllSongs()","All Songs","🎵",S.allSongs.filter(s=>s.visible!==false).length,true):""}
-        ${playlists.map(pl=>plCard(`openPlaylist('${pl.id}')`,pl.name,pl.emoji||"🎵",(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length,false)).join("")}
+        ${playlists.length===1&&recent.length===0?soloPlaylistCard(playlists[0]):
+          (recent.length>0?plCard("openRecent()","Recently Added","⚡",recent.length,true)+plCard("openAllSongs()","All Songs","🎵",S.allSongs.filter(s=>s.visible!==false).length,true):"")+
+          playlists.map(pl=>plCard(`openPlaylist('${pl.id}')`,pl.name,pl.emoji||"🎵",(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length,false)).join("")}
       </div>
       ${(playlists.length===0&&playlistsLoaded)?'<div class="empty-state"><div class="empty-icon">🎸</div><p>Setlist is being prepared — check back soon!</p></div>':""}
     </div>
@@ -797,17 +819,19 @@ function renderAdminRequests(){
 
 function renderAdminPlaylists(){
   const anyHidden=S.playlists.some(p=>p.visible===false);
+  const acousticPl=S.playlists.find(p=>/acoustic/i.test(p.name));
   return`<div class="add-form"><h4>New Playlist</h4>
     <div class="field" style="display:flex;gap:8px"><input type="text" id="new-pl-emoji" placeholder="🎵" style="width:70px"><input type="text" id="new-pl-name" placeholder="Playlist name" style="flex:1"></div>
     <button class="btn-add" onclick="addPlaylist()">+ Add</button>
   </div>
+  ${acousticPl?`<button class="btn-add" style="background:#f1c40f;color:#1a1a1a;margin-bottom:16px" onclick="soloPlaylist('${acousticPl.id}')">🎸 Activate Acoustic Mode</button>`:""}
+  ${anyHidden?'<button class="btn-secondary" style="margin-bottom:16px" onclick="showAllPlaylists()">👁 Show all playlists again</button>':""}
   <div class="add-form" style="border:1px solid rgba(192,57,43,0.4)"><h4 style="color:var(--red2)">⚠️ Zona de Perigo</h4>
     <p style="font-size:12px;color:var(--gray2);margin:0 0 10px">Apaga TODAS as músicas de TODAS as playlists, deixando elas vazias e prontas pra importar. As playlists continuam existindo.</p>
     <button class="btn-add" style="background:var(--red)" onclick="resetCatalog()">🧹 Limpar todas as músicas</button>
   </div>
-  ${anyHidden?'<button class="btn-secondary" style="margin-bottom:16px" onclick="showAllPlaylists()">👁 Show all playlists again</button>':""}
   ${S.playlists.length===0?'<div class="empty-state"><div class="empty-icon">🎵</div><p>No playlists yet. Add one above!</p></div>':
-  S.playlists.map(pl=>`<div class="admin-pl-item"><span style="font-size:24px">${pl.emoji||"🎵"}</span><div style="flex:1"><div class="admin-pl-name">${pl.name}</div><div class="admin-pl-count">${(S.songs[pl.id]||[]).length} songs</div></div><button class="solo-pl-btn" onclick="soloPlaylist('${pl.id}')" title="Show only this one (hides all others)">🎯</button><button class="manage-btn" onclick="setTab('songs','${pl.id}')">Songs</button><button class="delete-pl-btn" onclick="deletePlaylist('${pl.id}')" title="Delete">🗑</button><div class="toggle ${pl.visible!==false?"on":""}" onclick="togglePl('${pl.id}',${pl.visible!==false})"></div></div>`).join("")}`;
+  S.playlists.map(pl=>`<div class="admin-pl-item"><span style="font-size:24px">${pl.emoji||"🎵"}</span><div style="flex:1"><div class="admin-pl-name">${pl.name}</div><div class="admin-pl-count">${(S.songs[pl.id]||[]).length} songs</div></div><button class="manage-btn" onclick="setTab('songs','${pl.id}')">Songs</button><button class="delete-pl-btn" onclick="deletePlaylist('${pl.id}')" title="Delete">🗑</button><div class="toggle ${pl.visible!==false?"on":""}" onclick="togglePl('${pl.id}',${pl.visible!==false})"></div></div>`).join("")}`;
 }
 
 function renderAdminSongs(){
