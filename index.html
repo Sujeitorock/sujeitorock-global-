@@ -753,7 +753,7 @@ function renderAdmin(){
   const root=document.getElementById("root");
   const titles={requests:"Live Requests",playlists:"Setlist / Playlists",songs:"Songs",wishlist:"Wishlist",report:"Pedidos de Hoje",config:"Settings"};
   root.innerHTML=`<div class="admin-screen fade-in">
-    <div class="admin-header"><div class="admin-logo">🎸 SR GLOBAL</div><div class="admin-title">${titles[S.adminTab]||""}</div><button class="logout-btn" onclick="doLogout()">Sign Out</button></div>
+    <div class="admin-header"><div class="admin-logo">🎸 SR GLOBAL</div><div class="admin-title">${titles[S.adminTab]||""}</div>${S.config.acousticMode===true?'<span style="background:rgba(192,57,43,0.2);border:1px solid var(--red);color:var(--red2);font-size:10px;font-weight:700;padding:4px 8px;border-radius:10px;white-space:nowrap">🎸 ACÚSTICO</span>':""}<button class="logout-btn" onclick="doLogout()">Sign Out</button></div>
     <div class="admin-content">${renderAdminContent()}</div>
     <nav class="admin-nav">
       <button class="admin-nav-btn ${S.adminTab==="requests"?"active":""}" onclick="setTab('requests')"><span class="nav-icon">📋</span>Requests${S.requests.length>0?" ("+S.requests.length+")":""}</button>
@@ -794,7 +794,13 @@ function renderAdminRequests(){
 }
 
 function renderAdminPlaylists(){
-  return`<div class="add-form"><h4>New Playlist</h4>
+  const acOn=S.config.acousticMode===true;
+  return`<div class="add-form" style="border:1px solid rgba(192,57,43,0.4);background:linear-gradient(135deg,#1a0000,#2a0808)"><h4 style="color:var(--red2)">🎸 Modo Show Acústico${acOn?' <span style="color:var(--red2);font-size:11px">● ATIVO</span>':""}</h4>
+    <p style="font-size:12px;color:var(--gray2);margin:0 0 10px">Escolha a playlist acústica e ative pra ocultar todas as outras na hora — o público só vê a acústica. Desative depois do show pra voltar tudo ao normal.</p>
+    <div class="pl-pills">${S.playlists.length===0?'<span style="color:var(--gray);font-size:12px">Crie uma playlist primeiro</span>':S.playlists.map(pl=>`<button class="pl-pill ${S.config.acousticPlaylistId===pl.id?"active":""}" onclick="setAcousticPlaylist('${pl.id}')">${pl.emoji||"🎵"} ${esc(pl.name)}</button>`).join("")}</div>
+    <button class="btn-add" style="margin-top:10px;background:${acOn?"var(--gray)":"var(--red)"}" onclick="toggleAcousticMode()">${acOn?"⏹ Desativar Modo Acústico":"🎸 Ativar Modo Acústico"}</button>
+  </div>
+  <div class="add-form"><h4>New Playlist</h4>
     <div class="field" style="display:flex;gap:8px"><input type="text" id="new-pl-emoji" placeholder="🎵" style="width:70px"><input type="text" id="new-pl-name" placeholder="Playlist name" style="flex:1"></div>
     <button class="btn-add" onclick="addPlaylist()">+ Add</button>
   </div>
@@ -1015,6 +1021,32 @@ async function addPlaylist(){const emoji=document.getElementById("new-pl-emoji")
 async function addSong(){const title=document.getElementById("new-s-title")?.value.trim();const artist=document.getElementById("new-s-artist")?.value.trim();const plId=S.adminSongsPl;if(!title||!artist){toast("Fill in song title and artist!");return;}if(!plId){toast("Select a playlist!");return;}if((S.songs[plId]||[]).some(x=>(x.title||"").trim().toLowerCase()===title.toLowerCase()&&(x.artist||"").trim().toLowerCase()===artist.toLowerCase())){toast("⚠️ Essa música já está nessa playlist!");return;}try{const ref=await db.collection("playlists").doc(plId).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});const ns={id:ref.id,title,artist,visible:true,playlistId:plId,playlistName:S.playlists.find(p=>p.id===plId)?.name};if(!S.songs[plId])S.songs[plId]=[];S.songs[plId].push(ns);S.allSongs.push(ns);document.getElementById("new-s-title").value="";toast("Song added! 🎤");renderAdmin();}catch(e){toast("Error.");}}
 async function deleteSong(plId,sId){if(!confirm("Delete this song?"))return;try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).delete();S.songs[plId]=(S.songs[plId]||[]).filter(x=>x.id!==sId);S.allSongs=S.allSongs.filter(x=>!(x.id===sId&&x.playlistId===plId));toast("Song deleted! 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
+async function setAcousticPlaylist(plId){S.config={...S.config,acousticPlaylistId:plId};try{await db.collection("config").doc("main").set(S.config);}catch(e){}renderAdmin();}
+async function toggleAcousticMode(){
+  const turningOn=!S.config.acousticMode;
+  if(turningOn&&!S.config.acousticPlaylistId){toast("Escolha a playlist acústica primeiro!");return;}
+  try{
+    if(turningOn){
+      const prev={};
+      for(const pl of S.playlists){
+        prev[pl.id]=pl.visible!==false;
+        const shouldShow=pl.id===S.config.acousticPlaylistId;
+        if((pl.visible!==false)!==shouldShow){await db.collection("playlists").doc(pl.id).update({visible:shouldShow});pl.visible=shouldShow;}
+      }
+      S.config={...S.config,acousticMode:true,acousticPrevVisibility:prev};
+    }else{
+      const prev=S.config.acousticPrevVisibility||{};
+      for(const pl of S.playlists){
+        const shouldShow=prev.hasOwnProperty(pl.id)?prev[pl.id]:true;
+        if((pl.visible!==false)!==shouldShow){await db.collection("playlists").doc(pl.id).update({visible:shouldShow});pl.visible=shouldShow;}
+      }
+      S.config={...S.config,acousticMode:false};
+    }
+    await db.collection("config").doc("main").set(S.config);
+    toast(turningOn?"🎸 Modo Show Acústico ativado!":"Modo normal restaurado!");
+    renderAdmin();
+  }catch(e){toast("Erro ao ativar/desativar.");}
+}
 async function deletePlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!confirm('Delete playlist "'+( pl?.name||"")+'"?\n\nSongs will remain in All Songs.'))return;try{await db.collection("playlists").doc(plId).delete();S.playlists=S.playlists.filter(p=>p.id!==plId);if(S.songs[plId]){S.songs[plId].forEach(s=>{s.playlistId="";s.playlistName="";const ai=S.allSongs.findIndex(x=>x.id===s.id);if(ai>=0){S.allSongs[ai].playlistId="";S.allSongs[ai].playlistName="";}});}delete S.songs[plId];if(S.adminSongsPl===plId)S.adminSongsPl=S.playlists[0]?.id||null;toast("Playlist deleted! Songs kept in All Songs 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function toggleSong(plId,sId,cur){try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).update({visible:!cur});const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(s)s.visible=!cur;const as=S.allSongs.find(x=>x.id===sId&&x.playlistId===plId);if(as)as.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 async function removeWish(id){try{await db.collection("wishlist").doc(id).delete();toast("Removed!");}catch(e){toast("Error.");}}
