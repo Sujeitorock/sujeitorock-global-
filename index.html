@@ -391,6 +391,17 @@ window.addEventListener("popstate",function(e){
   render();window.scrollTo(0,0);
 });
 
+// Uma mesma música (título+artista) pode existir em várias playlists ao mesmo tempo — nas telas que juntam tudo
+// (busca, Recently Added, All Songs), ela sempre conta como UMA só, nunca aparece duplicada.
+function dedupeSongs(list){
+  const seen=new Set();
+  return list.filter(s=>{
+    const key=(s.title||"").trim().toLowerCase()+"|"+(s.artist||"").trim().toLowerCase();
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+}
 // ══ SEARCH ══
 let _searchTimer=null;
 function doSearch(q){
@@ -399,7 +410,7 @@ function doSearch(q){
   if(!q.trim()){
     S.searchResults=[];
   }else{
-    S.searchResults=S.allSongs.filter(s=>s.visible!==false&&(s.title?.toLowerCase().includes(lq)||s.artist?.toLowerCase().includes(lq)));
+    S.searchResults=dedupeSongs(S.allSongs.filter(s=>s.visible!==false&&(s.title?.toLowerCase().includes(lq)||s.artist?.toLowerCase().includes(lq))));
   }
   updateSearchDisplay();
 }
@@ -471,7 +482,7 @@ function soloPlaylistCard(pl){
 }
 function renderHome(){
   const playlists=S.playlists.filter(p=>p.visible!==false);
-  const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);
+  const recent=dedupeSongs(S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0))).slice(0,15);
   const hasSearch=S.searchQuery.trim().length>0;
   return`<div class="screen fade-in">
     <div class="home-header">
@@ -499,7 +510,7 @@ function renderHome(){
       ${(playlists.length>0||recent.length>0)?'<p class="section-title">Setlist</p>':""}
       <div class="playlists-grid">
         ${playlists.length===1&&recent.length===0?soloPlaylistCard(playlists[0]):
-          (recent.length>0?plCard("openRecent()","Recently Added","⚡",recent.length,true)+plCard("openAllSongs()","All Songs","🎵",S.allSongs.filter(s=>s.visible!==false).length,true):"")+
+          (recent.length>0?plCard("openRecent()","Recently Added","⚡",recent.length,true)+plCard("openAllSongs()","All Songs","🎵",dedupeSongs(S.allSongs.filter(s=>s.visible!==false)).length,true):"")+
           playlists.map(pl=>plCard(`openPlaylist('${pl.id}')`,pl.name,pl.emoji||"🎵",(S.songs[pl.id]||[]).filter(s=>s.visible!==false).length,false)).join("")}
       </div>
       ${(playlists.length===0&&playlistsLoaded)?'<div class="empty-state"><div class="empty-icon">🎸</div><p>Setlist is being prepared — check back soon!</p></div>':""}
@@ -927,8 +938,8 @@ function renderAdminConfig(){
 // ══ ACTIONS ══
 function openPlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!pl)return;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];goTo("playlist",{currentPlaylist:pl});}
 function selectSong(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;S.selectedSongs=[];S.currentSong=s;S.requesterName="";S.message="";S.tipMethod=null;S.showTipDetail=false;goTo("step1");}
-function openRecent(){const recent=S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0)).slice(0,15);S.currentPlaylist={id:"__recent__",name:"Recently Added",emoji:"⚡"};S.songs["__recent__"]=recent;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S.screen="playlist";render();window.scrollTo(0,0);}
-function openAllSongs(){const a=S.allSongs.filter(s=>s.visible!==false);const grouped={};a.forEach(s=>{if(!grouped[s.artist])grouped[s.artist]=[];grouped[s.artist].push(s);});const sorted=Object.keys(grouped).sort().map(artist=>({artist,songs:grouped[artist]}));S.currentPlaylist={id:"__all__",name:"All Songs",emoji:"🎵"};S.songs["__all__"]=a;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S._groupedByArtist=sorted;S.screen="playlist";render();}
+function openRecent(){const recent=dedupeSongs(S.allSongs.filter(s=>s.visible!==false).sort((a,b)=>(b.addedAt?.toMillis()||0)-(a.addedAt?.toMillis()||0))).slice(0,15);S.currentPlaylist={id:"__recent__",name:"Recently Added",emoji:"⚡"};S.songs["__recent__"]=recent;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S.screen="playlist";render();window.scrollTo(0,0);}
+function openAllSongs(){const a=dedupeSongs(S.allSongs.filter(s=>s.visible!==false));const grouped={};a.forEach(s=>{if(!grouped[s.artist])grouped[s.artist]=[];grouped[s.artist].push(s);});const sorted=Object.keys(grouped).sort().map(artist=>({artist,songs:grouped[artist]}));S.currentPlaylist={id:"__all__",name:"All Songs",emoji:"🎵"};S.songs["__all__"]=a;S._plSearch="";S.selectionMode=false;S.selectedSongs=[];S._groupedByArtist=sorted;S.screen="playlist";render();}
 function toggleSelMode(){S.selectionMode=!S.selectionMode;if(!S.selectionMode)S.selectedSongs=[];render();}
 function toggleSongSel(plId,sId){const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;const idx=S.selectedSongs.findIndex(x=>x.id===sId);if(idx>=0)S.selectedSongs.splice(idx,1);else S.selectedSongs.push(s);render();}
 function requestSelectedSongs(){if(!S.selectedSongs.length)return;S.currentSong=S.selectedSongs[0];S.requesterName="";S.message="";S.tipMethod=null;S.showTipDetail=false;goTo("step1");}
