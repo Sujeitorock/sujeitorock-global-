@@ -278,6 +278,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-grad
 .admin-pl-count{font-size:12px;color:var(--gray2)}
 .manage-btn{background:none;border:1px solid var(--border);color:var(--gray2);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:"Barlow",sans-serif;transition:all 0.2s}
 .manage-btn:hover{border-color:var(--red2);color:var(--red2)}
+.solo-pl-btn{background:none;border:1px solid var(--border);color:var(--gray2);padding:5px 9px;border-radius:6px;font-size:13px;cursor:pointer;font-family:"Barlow",sans-serif;transition:all 0.2s}
+.solo-pl-btn:hover{border-color:#f1c40f;color:#f1c40f;background:rgba(241,196,15,0.1)}
 .toggle{width:42px;height:24px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s}
 .toggle::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--gray);transition:all 0.2s}
 .toggle.on{background:rgba(192,57,43,0.3);border-color:var(--red)}
@@ -794,6 +796,7 @@ function renderAdminRequests(){
 }
 
 function renderAdminPlaylists(){
+  const anyHidden=S.playlists.some(p=>p.visible===false);
   return`<div class="add-form"><h4>New Playlist</h4>
     <div class="field" style="display:flex;gap:8px"><input type="text" id="new-pl-emoji" placeholder="🎵" style="width:70px"><input type="text" id="new-pl-name" placeholder="Playlist name" style="flex:1"></div>
     <button class="btn-add" onclick="addPlaylist()">+ Add</button>
@@ -802,8 +805,9 @@ function renderAdminPlaylists(){
     <p style="font-size:12px;color:var(--gray2);margin:0 0 10px">Apaga TODAS as músicas de TODAS as playlists, deixando elas vazias e prontas pra importar. As playlists continuam existindo.</p>
     <button class="btn-add" style="background:var(--red)" onclick="resetCatalog()">🧹 Limpar todas as músicas</button>
   </div>
+  ${anyHidden?'<button class="btn-secondary" style="margin-bottom:16px" onclick="showAllPlaylists()">👁 Show all playlists again</button>':""}
   ${S.playlists.length===0?'<div class="empty-state"><div class="empty-icon">🎵</div><p>No playlists yet. Add one above!</p></div>':
-  S.playlists.map(pl=>`<div class="admin-pl-item"><span style="font-size:24px">${pl.emoji||"🎵"}</span><div style="flex:1"><div class="admin-pl-name">${pl.name}</div><div class="admin-pl-count">${(S.songs[pl.id]||[]).length} songs</div></div><button class="manage-btn" onclick="setTab('songs','${pl.id}')">Songs</button><button class="delete-pl-btn" onclick="deletePlaylist('${pl.id}')" title="Delete">🗑</button><div class="toggle ${pl.visible!==false?"on":""}" onclick="togglePl('${pl.id}',${pl.visible!==false})"></div></div>`).join("")}`;
+  S.playlists.map(pl=>`<div class="admin-pl-item"><span style="font-size:24px">${pl.emoji||"🎵"}</span><div style="flex:1"><div class="admin-pl-name">${pl.name}</div><div class="admin-pl-count">${(S.songs[pl.id]||[]).length} songs</div></div><button class="solo-pl-btn" onclick="soloPlaylist('${pl.id}')" title="Show only this one (hides all others)">🎯</button><button class="manage-btn" onclick="setTab('songs','${pl.id}')">Songs</button><button class="delete-pl-btn" onclick="deletePlaylist('${pl.id}')" title="Delete">🗑</button><div class="toggle ${pl.visible!==false?"on":""}" onclick="togglePl('${pl.id}',${pl.visible!==false})"></div></div>`).join("")}`;
 }
 
 function renderAdminSongs(){
@@ -1015,6 +1019,42 @@ async function addPlaylist(){const emoji=document.getElementById("new-pl-emoji")
 async function addSong(){const title=document.getElementById("new-s-title")?.value.trim();const artist=document.getElementById("new-s-artist")?.value.trim();const plId=S.adminSongsPl;if(!title||!artist){toast("Fill in song title and artist!");return;}if(!plId){toast("Select a playlist!");return;}if((S.songs[plId]||[]).some(x=>(x.title||"").trim().toLowerCase()===title.toLowerCase()&&(x.artist||"").trim().toLowerCase()===artist.toLowerCase())){toast("⚠️ Essa música já está nessa playlist!");return;}try{const ref=await db.collection("playlists").doc(plId).collection("songs").add({title,artist,visible:true,addedAt:firebase.firestore.FieldValue.serverTimestamp()});const ns={id:ref.id,title,artist,visible:true,playlistId:plId,playlistName:S.playlists.find(p=>p.id===plId)?.name};if(!S.songs[plId])S.songs[plId]=[];S.songs[plId].push(ns);S.allSongs.push(ns);document.getElementById("new-s-title").value="";toast("Song added! 🎤");renderAdmin();}catch(e){toast("Error.");}}
 async function deleteSong(plId,sId){if(!confirm("Delete this song?"))return;try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).delete();S.songs[plId]=(S.songs[plId]||[]).filter(x=>x.id!==sId);S.allSongs=S.allSongs.filter(x=>!(x.id===sId&&x.playlistId===plId));toast("Song deleted! 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
+// Sets visible=vis for a whole playlist (+ its songs) with batched writes, chunked at 450 (Firestore's batch limit is 500).
+async function bulkSetPlaylistVisibility(pairs){
+  let batch=db.batch(),n=0;
+  const flush=async()=>{if(n>0){await batch.commit();batch=db.batch();n=0;}};
+  for(const {plId,vis} of pairs){
+    batch.update(db.collection("playlists").doc(plId),{visible:vis});n++;
+    if(n>=450)await flush();
+    const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=vis;
+    const songs=S.songs[plId]||[];
+    for(const s of songs){
+      batch.update(db.collection("playlists").doc(plId).collection("songs").doc(s.id),{visible:vis});n++;
+      s.visible=vis;
+      const a=S.allSongs.find(x=>x.id===s.id&&x.playlistId===plId);if(a)a.visible=vis;
+      if(n>=450)await flush();
+    }
+  }
+  await flush();
+}
+async function soloPlaylist(id){
+  const target=S.playlists.find(p=>p.id===id);
+  if(!target)return;
+  if(!confirm(`Show only "${target.name}" and hide ALL other playlists?\n\nUse "Show all playlists again" afterwards to restore.`))return;
+  try{
+    await bulkSetPlaylistVisibility(S.playlists.map(pl=>({plId:pl.id,vis:pl.id===id})));
+    toast(`Solo mode: only "${target.name}" is visible! 🎸`);
+    renderAdmin();
+  }catch(e){toast("Error activating solo mode.");}
+}
+async function showAllPlaylists(){
+  if(!confirm("Show all playlists again for the audience?"))return;
+  try{
+    await bulkSetPlaylistVisibility(S.playlists.map(pl=>({plId:pl.id,vis:true})));
+    toast("All playlists are visible again! 🎶");
+    renderAdmin();
+  }catch(e){toast("Error.");}
+}
 async function deletePlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!confirm('Delete playlist "'+( pl?.name||"")+'"?\n\nSongs will remain in All Songs.'))return;try{await db.collection("playlists").doc(plId).delete();S.playlists=S.playlists.filter(p=>p.id!==plId);if(S.songs[plId]){S.songs[plId].forEach(s=>{s.playlistId="";s.playlistName="";const ai=S.allSongs.findIndex(x=>x.id===s.id);if(ai>=0){S.allSongs[ai].playlistId="";S.allSongs[ai].playlistName="";}});}delete S.songs[plId];if(S.adminSongsPl===plId)S.adminSongsPl=S.playlists[0]?.id||null;toast("Playlist deleted! Songs kept in All Songs 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function toggleSong(plId,sId,cur){try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).update({visible:!cur});const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(s)s.visible=!cur;const as=S.allSongs.find(x=>x.id===sId&&x.playlistId===plId);if(as)as.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 async function removeWish(id){try{await db.collection("wishlist").doc(id).delete();toast("Removed!");}catch(e){toast("Error.");}}
