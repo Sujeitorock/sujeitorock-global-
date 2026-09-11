@@ -1276,7 +1276,6 @@ function listenReqs(){
   if(S.reqListener)S.reqListener();
   S.reqListener=db.collection("requests").where("status","==","pending").onSnapshot(snap=>{
     const newCount=snap.size;
-    if(S._prevReqCount>=0&&newCount>S._prevReqCount)playNotifSound();
     S._prevReqCount=newCount;
     S.requests=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
       const ta=a.createdAt?.toMillis?.()||0;
