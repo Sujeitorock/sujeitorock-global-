@@ -261,6 +261,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-grad
 /* REQUEST CARD */
 .request-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
 .request-card.has-tip{border-color:rgba(192,57,43,0.4);background:linear-gradient(135deg,rgba(26,0,0,0.6),rgba(30,30,30,0.8))}
+.request-card.is-wish{border-color:rgba(241,196,15,0.45);border-left:4px solid #f1c40f;background:linear-gradient(135deg,rgba(42,34,0,0.5),rgba(30,30,30,0.8))}
+.wish-badge{background:rgba(241,196,15,0.15);border:1px solid rgba(241,196,15,0.4);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;color:#f1c40f}
 .req-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .req-name{font-weight:700;font-size:14px;flex:1}
 .tip-badge{background:rgba(192,57,43,0.2);border:1px solid rgba(192,57,43,0.4);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--red2)}
@@ -784,7 +786,7 @@ function renderAdmin(){
   const root=document.getElementById("root");
   const titles={requests:"Live Requests",playlists:"Setlist / Playlists",songs:"Songs",wishlist:"Wishlist",report:"Pedidos de Hoje",config:"Settings"};
   root.innerHTML=`<div class="admin-screen fade-in">
-    <div class="admin-header"><div class="admin-logo">🎸 SR GLOBAL</div><div class="admin-title">${titles[S.adminTab]||""}</div><button class="logout-btn" onclick="doLogout()">Sign Out</button></div>
+    <div class="admin-header"><div class="admin-logo">🎸 SR GLOBAL</div><div class="admin-title">${titles[S.adminTab]||""}</div>${S.config.acousticMode===true?'<span style="background:rgba(192,57,43,0.2);border:1px solid var(--red);color:var(--red2);font-size:10px;font-weight:700;padding:4px 8px;border-radius:10px;white-space:nowrap">🎸 ACÚSTICO</span>':""}<button class="logout-btn" onclick="doLogout()">Sign Out</button></div>
     <div class="admin-content">${renderAdminContent()}</div>
     <nav class="admin-nav">
       <button class="admin-nav-btn ${S.adminTab==="requests"?"active":""}" onclick="setTab('requests')"><span class="nav-icon">📋</span>Requests${S.requests.length>0?" ("+S.requests.length+")":""}</button>
@@ -810,9 +812,31 @@ function renderAdminContent(){
 }
 
 function renderAdminRequests(){
-  if(S.requests.length===0)return'<div class="empty-state"><div class="empty-icon">🎵</div><p>No live requests yet.</p></div>';
+  const pls=S.playlists.filter(p=>p.visible!==false);
+  const items=[
+    ...S.requests.map(r=>({type:"request",data:r,ts:r.createdAt?.toMillis?.()||0})),
+    ...S.wishlist.map(w=>({type:"wish",data:w,ts:w.createdAt?.toMillis?.()||0}))
+  ].sort((a,b)=>a.ts-b.ts);
+  if(items.length===0)return'<div class="empty-state"><div class="empty-icon">🎵</div><p>No live requests yet.</p></div>';
   const REACTIONS=["🤘","Yeaaah!","Great song!","On it!","Nice taste!","🔥 Classic!"];
-  return S.requests.map(r=>{
+  return items.map(it=>{
+    if(it.type==="wish"){
+      const w=it.data;
+      const isOpen=S._wishAddOpen===w.id;
+      const t=w.createdAt?new Date(w.createdAt.toMillis()).toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"}):"";
+      return`<div class="request-card is-wish">
+        <div class="req-header"><div class="req-name">${esc(w.requestedBy||"Anonymous")}</div><span class="wish-badge">💌 Not in the list</span><span class="req-time">${t}</span></div>
+        <div class="req-song">🎵 <strong>${esc(w.title)}</strong> — ${esc(w.artist)}<button class="copy-title-btn" data-copy="${esc(w.title)}" data-msg="Título copiado! 📋" onclick="copyFromData(this)" title="Copiar título da música">📋 Copiar</button></div>
+        <div class="req-actions"><button class="req-btn req-played" onclick="toggleWishAdd('${w.id}')">${isOpen?"− Cancel":"➕ Add to playlist"}</button><button class="req-btn req-dismiss" onclick="removeWish('${w.id}')">✕ Remove</button></div>
+        ${isOpen?`<div class="move-song-panel" style="margin-top:8px">
+          <div class="move-song-panel-title">Add to playlist:</div>
+          <div class="move-pl-pills">
+            ${pls.length===0?'<span style="color:var(--gray);font-size:12px">No playlists available</span>':pls.map(p=>`<button class="move-pl-pill" onclick="addWishToPlaylist('${w.id}','${p.id}')">${p.emoji||"🎵"} ${esc(p.name)}</button>`).join("")}
+          </div>
+        </div>`:""}
+      </div>`;
+    }
+    const r=it.data;
     const t=r.createdAt?new Date(r.createdAt.toMillis()).toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"}):"";
     return`<div class="request-card ${r.hasTip?"has-tip":""}">
       <div class="req-header"><div class="req-name">${esc(r.requesterName||"Anonymous")}</div>${r.hasTip?'<span class="tip-badge">💰 '+esc((r.tipMethod||"").toUpperCase())+'</span>':''}<span class="req-time">${t}</span></div>
@@ -1315,7 +1339,6 @@ function listenReqs(){
   if(S.reqListener)S.reqListener();
   S.reqListener=db.collection("requests").where("status","==","pending").onSnapshot(snap=>{
     const newCount=snap.size;
-    if(S._prevReqCount>=0&&newCount>S._prevReqCount)playNotifSound();
     S._prevReqCount=newCount;
     S.requests=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
       const ta=a.createdAt?.toMillis?.()||0;
