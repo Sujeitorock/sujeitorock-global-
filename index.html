@@ -369,7 +369,7 @@ const S={
   adminTab:"requests",adminSongsPl:null,
   searchQuery:"",searchResults:[],suggestTitle:"",suggestArtist:"",
   config:{pixKey:"valeu@sujeitorock.com.br"},
-  _plSearch:"",_movingSong:null,_prevReqCount:-1,
+  _plSearch:"",_movingSong:null,_prevReqCount:-1,_reqHiddenWish:[],
   reqListener:null,wishListener:null,_reactionListener:null,
   showsData:null,showsLoaded:false,showsError:null,
   adminBulkSel:[],adminBulkMode:false,
@@ -815,7 +815,7 @@ function renderAdminRequests(){
   const pls=S.playlists.filter(p=>p.visible!==false);
   const items=[
     ...S.requests.map(r=>({type:"request",data:r,ts:r.createdAt?.toMillis?.()||0})),
-    ...S.wishlist.map(w=>({type:"wish",data:w,ts:w.createdAt?.toMillis?.()||0}))
+    ...S.wishlist.filter(w=>!S._reqHiddenWish.includes(w.id)).map(w=>({type:"wish",data:w,ts:w.createdAt?.toMillis?.()||0}))
   ].sort((a,b)=>a.ts-b.ts);
   if(items.length===0)return'<div class="empty-state"><div class="empty-icon">🎵</div><p>No live requests yet.</p></div>';
   const REACTIONS=["🤘","Yeaaah!","Great song!","On it!","Nice taste!","🔥 Classic!"];
@@ -823,11 +823,11 @@ function renderAdminRequests(){
     if(it.type==="wish"){
       const w=it.data;
       const isOpen=S._wishAddOpen===w.id;
-      const t=w.createdAt?new Date(w.createdAt.toMillis()).toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"}):"";
+      const t=w.createdAt?fmtWishDateTime(w.createdAt.toMillis()):"";
       return`<div class="request-card is-wish">
         <div class="req-header"><div class="req-name">${esc(w.requestedBy||"Anonymous")}</div><span class="wish-badge">💌 Not in the list</span><span class="req-time">${t}</span></div>
         <div class="req-song">🎵 <strong>${esc(w.title)}</strong> — ${esc(w.artist)}<button class="copy-title-btn" data-copy="${esc(w.title)}" data-msg="Título copiado! 📋" onclick="copyFromData(this)" title="Copiar título da música">📋 Copiar</button></div>
-        <div class="req-actions"><button class="req-btn req-played" onclick="toggleWishAdd('${w.id}')">${isOpen?"− Cancel":"➕ Add to playlist"}</button><button class="req-btn req-dismiss" onclick="removeWish('${w.id}')">✕ Remove</button></div>
+        <div class="req-actions"><button class="req-btn req-played" onclick="toggleWishAdd('${w.id}')">${isOpen?"− Cancel":"➕ Add to playlist"}</button><button class="req-btn req-dismiss" onclick="hideWishFromRequests('${w.id}')" title="Só some daqui, continua na aba Wishlist">✕ Remove</button></div>
         ${isOpen?`<div class="move-song-panel" style="margin-top:8px">
           <div class="move-song-panel-title">Add to playlist:</div>
           <div class="move-pl-pills">
@@ -915,7 +915,7 @@ function renderAdminWish(){
     return`<div class="wish-item-wrap" style="margin-bottom:8px">
       <div class="wish-item" style="margin-bottom:${isOpen?"0":"8px"}">
         <div class="wish-count">${w.count||1}</div>
-        <div style="flex:1"><div style="font-weight:700;font-size:15px">${esc(w.title)}</div><div style="font-size:13px;color:var(--gray2)">${esc(w.artist)}</div></div>
+        <div style="flex:1"><div style="font-weight:700;font-size:15px">${esc(w.title)}</div><div style="font-size:13px;color:var(--gray2)">${esc(w.artist)}</div>${w.createdAt?`<div style="font-size:11px;color:var(--gray);margin-top:2px">${fmtWishDateTime(w.createdAt.toMillis())}</div>`:""}</div>
         <button onclick="toggleWishAdd('${w.id}')" title="Add to playlist" style="background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.3);color:#27ae60;font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:4px">${isOpen?"−":"+"}</button>
         <button onclick="removeWish('${w.id}')" title="Delete" style="background:none;border:none;color:var(--gray);font-size:18px;cursor:pointer">✕</button>
       </div>
@@ -928,7 +928,9 @@ function renderAdminWish(){
     </div>`;
   }).join("")}`;
 }
+function fmtWishDateTime(ms){const d=new Date(ms);return d.toLocaleDateString("en",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"});}
 function toggleWishAdd(id){S._wishAddOpen=S._wishAddOpen===id?null:id;renderAdmin();}
+function hideWishFromRequests(id){S._reqHiddenWish=[...S._reqHiddenWish,id];renderAdmin();}
 async function addWishToPlaylist(wishId,plId){
   const w=S.wishlist.find(x=>x.id===wishId);
   if(!w){toast("Suggestion not found.");return;}
@@ -1062,7 +1064,7 @@ async function doLogin(){
     listenReqs();listenWish();requestNotifPerm();activateAdminKeepAlive();renderAdmin();
   }catch(e){if(err){err.style.display="block";err.textContent="Incorrect email or password.";}}
 }
-async function doLogout(){localStorage.removeItem("sr_was_admin");await auth.signOut();S.isAdmin=false;if(S.reqListener)S.reqListener();if(S.wishListener)S.wishListener();goHome();}
+async function doLogout(){localStorage.removeItem("sr_was_admin");await auth.signOut();S.isAdmin=false;S._reqHiddenWish=[];if(S.reqListener)S.reqListener();if(S.wishListener)S.wishListener();goHome();}
 function setTab(tab,plId){S.adminTab=tab;if(plId)S.adminSongsPl=plId;renderAdmin();if(tab==="report")loadReport();}
 async function markPlayed(id){try{await db.collection("requests").doc(id).update({status:"played"});toast("Marked as played! 🎸");}catch(e){toast("Error.");}}
 async function dismissReq(id){try{await db.collection("requests").doc(id).update({status:"dismissed"});}catch(e){toast("Error.");}}
