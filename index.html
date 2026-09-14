@@ -813,10 +813,11 @@ function renderAdminContent(){
 
 function renderAdminRequests(){
   const pls=S.playlists.filter(p=>p.visible!==false);
+  const todayStart=new Date();todayStart.setHours(0,0,0,0);const todayStartMs=todayStart.getTime();
   const items=[
     ...S.requests.map(r=>({type:"request",data:r,ts:r.createdAt?.toMillis?.()||0})),
-    ...S.wishlist.filter(w=>!S._reqHiddenWish.includes(w.id)).map(w=>({type:"wish",data:w,ts:w.createdAt?.toMillis?.()||0}))
-  ].sort((a,b)=>a.ts-b.ts);
+    ...S.wishlist.filter(w=>!S._reqHiddenWish.includes(w.id)&&(w.createdAt?.toMillis?.()||0)>=todayStartMs).map(w=>({type:"wish",data:w,ts:w.createdAt?.toMillis?.()||0}))
+  ].sort((a,b)=>b.ts-a.ts);
   if(items.length===0)return'<div class="empty-state"><div class="empty-icon">🎵</div><p>No live requests yet.</p></div>';
   const REACTIONS=["🤘","Yeaaah!","Great song!","On it!","Nice taste!","🔥 Classic!"];
   return items.map(it=>{
