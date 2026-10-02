@@ -850,7 +850,7 @@ function renderAdminRequests(){
 }
 
 function renderAdminPlaylists(){
-  const anyHidden=S.playlists.some(p=>p.visible===false);
+  const anyHidden=S.playlists.some(p=>p.visible===false||(S.songs[p.id]||[]).some(x=>x.visible===false));
   const acousticPl=S.playlists.find(p=>/acoustic/i.test(p.name));
   return`<div class="add-form"><h4>New Playlist</h4>
     <div class="field" style="display:flex;gap:8px"><input type="text" id="new-pl-emoji" placeholder="🎵" style="width:70px"><input type="text" id="new-pl-name" placeholder="Playlist name" style="flex:1"></div>
@@ -1079,12 +1079,12 @@ async function deleteSong(plId,sId){if(!confirm("Delete this song?"))return;try{
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 // Sets visible=vis for a whole playlist (+ its songs) with batched writes, chunked at 450 (Firestore's batch limit is 500).
 async function bulkSetPlaylistVisibility(pairs){
-  // Only touch docs whose visibility actually changes, and update local state AFTER the commits succeed,
+  // Always rewrite playlist docs (local state may be stale), only changed songs, and update local state AFTER the commits succeed,
   // so a failed write never leaves the UI thinking everything is visible while Firestore is still in solo mode.
   const ops=[];
   for(const {plId,vis} of pairs){
     const pl=S.playlists.find(p=>p.id===plId);
-    if(pl&&pl.visible!==vis)ops.push({ref:db.collection("playlists").doc(plId),vis,apply:()=>{pl.visible=vis;}});
+    if(pl)ops.push({ref:db.collection("playlists").doc(plId),vis,apply:()=>{pl.visible=vis;}});
     for(const s of (S.songs[plId]||[])){
       if(s.visible===vis)continue;
       ops.push({ref:db.collection("playlists").doc(plId).collection("songs").doc(s.id),vis,apply:()=>{
