@@ -1079,21 +1079,27 @@ async function deleteSong(plId,sId){if(!confirm("Delete this song?"))return;try{
 async function togglePl(plId,cur){try{await db.collection("playlists").doc(plId).update({visible:!cur});const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
 // Sets visible=vis for a whole playlist (+ its songs) with batched writes, chunked at 450 (Firestore's batch limit is 500).
 async function bulkSetPlaylistVisibility(pairs){
-  let batch=db.batch(),n=0;
-  const flush=async()=>{if(n>0){await batch.commit();batch=db.batch();n=0;}};
+  // Only touch docs whose visibility actually changes, and update local state AFTER the commits succeed,
+  // so a failed write never leaves the UI thinking everything is visible while Firestore is still in solo mode.
+  const ops=[];
   for(const {plId,vis} of pairs){
-    batch.update(db.collection("playlists").doc(plId),{visible:vis});n++;
-    if(n>=450)await flush();
-    const pl=S.playlists.find(p=>p.id===plId);if(pl)pl.visible=vis;
-    const songs=S.songs[plId]||[];
-    for(const s of songs){
-      batch.update(db.collection("playlists").doc(plId).collection("songs").doc(s.id),{visible:vis});n++;
-      s.visible=vis;
-      const a=S.allSongs.find(x=>x.id===s.id&&x.playlistId===plId);if(a)a.visible=vis;
-      if(n>=450)await flush();
+    const pl=S.playlists.find(p=>p.id===plId);
+    if(pl&&pl.visible!==vis)ops.push({ref:db.collection("playlists").doc(plId),vis,apply:()=>{pl.visible=vis;}});
+    for(const s of (S.songs[plId]||[])){
+      if(s.visible===vis)continue;
+      ops.push({ref:db.collection("playlists").doc(plId).collection("songs").doc(s.id),vis,apply:()=>{
+        s.visible=vis;
+        const a=S.allSongs.find(x=>x.id===s.id&&x.playlistId===plId);if(a)a.visible=vis;
+      }});
     }
   }
-  await flush();
+  for(let i=0;i<ops.length;i+=450){ // Firestore's batch limit is 500
+    const chunk=ops.slice(i,i+450);
+    const batch=db.batch();
+    chunk.forEach(o=>batch.update(o.ref,{visible:o.vis}));
+    await batch.commit();
+    chunk.forEach(o=>o.apply());
+  }
 }
 async function soloPlaylist(id){
   const target=S.playlists.find(p=>p.id===id);
@@ -1103,7 +1109,7 @@ async function soloPlaylist(id){
     await bulkSetPlaylistVisibility(S.playlists.map(pl=>({plId:pl.id,vis:pl.id===id})));
     toast(`Solo mode: only "${target.name}" is visible! 🎸`);
     renderAdmin();
-  }catch(e){toast("Error activating solo mode.");}
+  }catch(e){toast("Error activating solo mode.");renderAdmin();}
 }
 async function showAllPlaylists(){
   if(!confirm("Show all playlists again for the audience?"))return;
@@ -1111,7 +1117,7 @@ async function showAllPlaylists(){
     await bulkSetPlaylistVisibility(S.playlists.map(pl=>({plId:pl.id,vis:true})));
     toast("All playlists are visible again! 🎶");
     renderAdmin();
-  }catch(e){toast("Error.");}
+  }catch(e){toast("Error showing playlists — try again.");renderAdmin();}
 }
 async function deletePlaylist(plId){const pl=S.playlists.find(p=>p.id===plId);if(!confirm('Delete playlist "'+( pl?.name||"")+'"?\n\nSongs will remain in All Songs.'))return;try{await db.collection("playlists").doc(plId).delete();S.playlists=S.playlists.filter(p=>p.id!==plId);if(S.songs[plId]){S.songs[plId].forEach(s=>{s.playlistId="";s.playlistName="";const ai=S.allSongs.findIndex(x=>x.id===s.id);if(ai>=0){S.allSongs[ai].playlistId="";S.allSongs[ai].playlistName="";}});}delete S.songs[plId];if(S.adminSongsPl===plId)S.adminSongsPl=S.playlists[0]?.id||null;toast("Playlist deleted! Songs kept in All Songs 🗑");renderAdmin();}catch(e){toast("Error.");}}
 async function toggleSong(plId,sId,cur){try{await db.collection("playlists").doc(plId).collection("songs").doc(sId).update({visible:!cur});const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(s)s.visible=!cur;const as=S.allSongs.find(x=>x.id===sId&&x.playlistId===plId);if(as)as.visible=!cur;renderAdmin();}catch(e){toast("Error.");}}
@@ -1389,14 +1395,27 @@ async function loadConfig(){try{const doc=await db.collection("config").doc("mai
 async function loadPlaylists(){
   try{
     const snap=await db.collection("playlists").orderBy("order","asc").get();
-    S.playlists=snap.docs.map(d=>({id:d.id,...d.data()}));
-    await Promise.all(S.playlists.map(async pl=>{
-     const ss=await db.collection("playlists").doc(pl.id).collection("songs").get();
-      S.songs[pl.id]=ss.docs.map(d=>({id:d.id,...d.data(),playlistId:pl.id,playlistName:pl.name}));
-      S.allSongs.push(...S.songs[pl.id]);
+    const playlists=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const songs={},allSongs=[];
+    await Promise.all(playlists.map(async pl=>{
+      const ss=await db.collection("playlists").doc(pl.id).collection("songs").get();
+      songs[pl.id]=ss.docs.map(d=>({id:d.id,...d.data(),playlistId:pl.id,playlistName:pl.name}));
+      allSongs.push(...songs[pl.id]);
     }));
+    S.playlists=playlists;S.songs=songs;S.allSongs=allSongs;
     playlistsLoaded=true;render();
   }catch(e){playlistsLoaded=true;render();}
+}
+
+// Audience: pick up playlist visibility changes (e.g. admin leaving Acoustic Mode) without a page reload.
+function watchPlaylistVisibility(){
+  let timer=null;
+  db.collection("playlists").onSnapshot(snap=>{
+    if(S.isAdmin)return;
+    const changed=snap.docs.some(d=>{const cur=S.playlists.find(p=>p.id===d.id);return !cur||(cur.visible!==false)!==(d.data().visible!==false);})||snap.docs.length!==S.playlists.length;
+    if(!changed||!playlistsLoaded)return;
+    clearTimeout(timer);timer=setTimeout(loadPlaylists,1500);
+  },()=>{});
 }
 
 // ══ BOOT ══
@@ -1407,7 +1426,7 @@ auth.onAuthStateChanged(user=>{
     if(eraAdmin||vaiParaAdmin){localStorage.setItem("sr_was_admin","1");S.isAdmin=true;S.adminTab="requests";S._prevReqCount=-1;listenReqs();listenWish();requestNotifPerm();activateAdminKeepAlive();renderAdmin();}
   }
 });
-async function init(){history.replaceState({screen:"home"},"home","");await loadConfig();render();loadPlaylists();if(window.location.hash==="#admin")goTo("admin-login");}
+async function init(){history.replaceState({screen:"home"},"home","");await loadConfig();render();loadPlaylists().then(watchPlaylistVisibility);if(window.location.hash==="#admin")goTo("admin-login");}
 init();
 </script>
 </body>
