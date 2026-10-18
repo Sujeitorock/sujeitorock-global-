@@ -900,7 +900,6 @@ function renderAdminSongs(){
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 8px">
     <span style="font-size:13px;color:var(--gray2);font-weight:700">${songs.length} songs</span>
     <div style="display:flex;gap:6px;align-items:center">
-      ${songs.length>0?`<button class="select-toggle danger" style="border-color:rgba(192,57,43,.5);color:var(--red2)" onclick="clearPlaylistSongs('${S.adminSongsPl}')">🧹 Limpar</button>`:""}
       ${songs.length>0?`<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">${bulk?"✕ Cancel":"☑ Select"}</button>${bulk?`<button class="select-toggle" onclick="selectAllSongs()">✅ All</button>`:""}`:""}
     </div>
   </div>
