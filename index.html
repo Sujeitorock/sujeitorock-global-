@@ -797,7 +797,6 @@ function renderAdmin(){
       <button class="admin-nav-btn ${S.adminTab==="config"?"active":""}" onclick="setTab('config');setTimeout(genQR,100)"><span class="nav-icon">⚙️</span>Settings</button>
     </nav>
   </div>`;
-  filterAdminSongs();
 }
 
 function renderAdminContent(){
@@ -882,9 +881,12 @@ function renderAdminSongs(){
       return`<div class="admin-song-item ${isSel?"bulk-selected":""}" onclick="toggleAdminSongSel('${s.id}','${S.adminSongsPl}')"><div class="admin-song-cb">${isSel?"✓":""}</div><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div></div></div>`;
     }
     const isMoving=S._movingSong===s.id;
-    return`<div class="admin-song-item ${s.visible===false?"hidden-song":""}" data-q="${esc(normSearch(s.artist+" "+s.title))}"${normSearch(s.artist+" "+s.title).includes(normSearch(S.adminSongQ))?"":' style="display:none"'}><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div></div><button class="song-move-btn" onclick="editSong('${S.adminSongsPl}','${s.id}')">✏️ Edit</button><button class="song-move-btn ${isMoving?"active":""}" onclick="toggleMoveSong('${s.id}')">↗ Move</button><button class="song-del-btn" onclick="deleteSong('${S.adminSongsPl}','${s.id}')">🗑</button><div class="toggle ${s.visible!==false?"on":""}" onclick="toggleSong('${S.adminSongsPl}','${s.id}',${s.visible!==false})"></div></div>${isMoving?`<div class="move-song-panel"><div class="move-song-panel-title">Move to:</div><div class="move-pl-pills">${otherPls.length===0?'<span style="color:var(--gray);font-size:12px">Create another playlist first</span>':otherPls.map(p=>`<button class="move-pl-pill" onclick="moveSongToPlaylist('${S.adminSongsPl}','${s.id}','${p.id}')">${p.emoji||"🎵"} ${p.name}</button>`).join("")}</div></div>`:""}`; 
+    return`<div class="admin-song-item ${s.visible===false?"hidden-song":""}"><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div></div><button class="song-move-btn" onclick="editSong('${S.adminSongsPl}','${s.id}')">✏️ Edit</button><button class="song-move-btn ${isMoving?"active":""}" onclick="toggleMoveSong('${s.id}')">↗ Move</button><button class="song-del-btn" onclick="deleteSong('${S.adminSongsPl}','${s.id}')">🗑</button><div class="toggle ${s.visible!==false?"on":""}" onclick="toggleSong('${S.adminSongsPl}','${s.id}',${s.visible!==false})"></div></div>${isMoving?`<div class="move-song-panel"><div class="move-song-panel-title">Move to:</div><div class="move-pl-pills">${otherPls.length===0?'<span style="color:var(--gray);font-size:12px">Create another playlist first</span>':otherPls.map(p=>`<button class="move-pl-pill" onclick="moveSongToPlaylist('${S.adminSongsPl}','${s.id}','${p.id}')">${p.emoji||"🎵"} ${p.name}</button>`).join("")}</div></div>`:""}`; 
   }).join("");
   return`${plPills}
+  <div class="field" style="margin-bottom:10px"><input type="search" id="admin-song-search" placeholder="🔍 Search song or artist (all playlists)..." autocomplete="off" value="${esc(S.adminSongQ||"")}" oninput="S.adminSongQ=this.value;filterAdminSongs()"></div>
+  <div id="admin-song-results">${adminSearchHTML()}</div>
+  <div id="admin-song-main" style="${normSearch(S.adminSongQ)?"display:none":""}">
   <div class="bulk-section"><h4>📋 Bulk Import</h4>
     <p>Paste songs, one per line:<br><code style="color:var(--red2)">Song Title - Artist</code></p>
     <textarea id="bulk-input" placeholder="Smells Like Teen Spirit - Nirvana&#10;Yellow - Coldplay&#10;In the End - Linkin Park"></textarea>
@@ -902,12 +904,11 @@ function renderAdminSongs(){
       ${songs.length>0?`<button class="select-toggle ${bulk?"active":""}" onclick="S.adminBulkMode=!S.adminBulkMode;S.adminBulkSel=[];renderAdmin()">${bulk?"✕ Cancel":"☑ Select"}</button>${bulk?`<button class="select-toggle" onclick="selectAllSongs()">✅ All</button>`:""}`:""}
     </div>
   </div>
-  <div class="field" style="margin-bottom:10px"><input type="search" id="admin-song-search" placeholder="🔍 Search song or artist in this playlist..." autocomplete="off" value="${esc(S.adminSongQ||"")}" oninput="S.adminSongQ=this.value;filterAdminSongs()"></div>
-  <div id="admin-song-nores" style="display:none;text-align:center;color:var(--gray2);font-size:13px;padding:14px 0">❌ Not found in this playlist</div>
-  <div id="admin-song-rows" style="${bulk?"padding-bottom:120px":""}">
+  <div style="${bulk?"padding-bottom:120px":""}">
     ${songRows}
   </div>
-  ${bulkBar}`:'<div class="empty-state"><p>Select a playlist above</p></div>'}`;
+  ${bulkBar}`:'<div class="empty-state"><p>Select a playlist above</p></div>'}
+  </div>`;
 }
 
 function renderAdminWish(){
@@ -1018,10 +1019,20 @@ async function bulkDeleteSongs(){
   setTimeout(()=>renderAdmin(),400);
 }
 function normSearch(t){return String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();}
+function adminSearchHTML(){
+  const q=normSearch(S.adminSongQ);if(!q)return"";
+  const res=S.allSongs.filter(s=>normSearch(s.artist+" "+s.title).includes(q));
+  if(!res.length)return'<div style="text-align:center;color:var(--gray2);font-size:14px;padding:18px 0">❌ Not found in any playlist</div>';
+  return`<div style="font-size:13px;color:var(--gray2);font-weight:700;padding:0 0 8px">${res.length} found</div>`+res.slice(0,60).map(s=>{
+    const isMoving=S._movingSong===s.id;
+    const others=S.playlists.filter(p=>p.id!==s.playlistId);
+    const pl=S.playlists.find(p=>p.id===s.playlistId);
+    return`<div class="admin-song-item ${s.visible===false?"hidden-song":""}" style="flex-wrap:wrap"><div class="admin-song-info"><div class="admin-song-title">${esc(s.artist)}</div><div class="admin-song-artist">${esc(s.title)}</div><div style="font-size:11px;color:var(--red2);margin-top:2px">${pl?.emoji||"🎵"} ${esc(pl?.name||"")}</div></div><button class="song-move-btn" onclick="editSong('${s.playlistId}','${s.id}')">✏️ Edit</button><button class="song-move-btn ${isMoving?"active":""}" onclick="toggleMoveSong('${s.id}')">↗ Move</button><button class="song-del-btn" onclick="deleteSong('${s.playlistId}','${s.id}')">🗑</button></div>${isMoving?`<div class="move-song-panel"><div class="move-song-panel-title">Move to:</div><div class="move-pl-pills">${others.map(p=>`<button class="move-pl-pill" onclick="moveSongToPlaylist('${s.playlistId}','${s.id}','${p.id}')">${p.emoji||"🎵"} ${p.name}</button>`).join("")}</div></div>`:""}`;
+  }).join("");
+}
 function filterAdminSongs(){
-  const q=normSearch(S.adminSongQ);let n=0;
-  document.querySelectorAll("#admin-song-rows .admin-song-item").forEach(el=>{const ok=(el.dataset.q||"").includes(q);el.style.display=ok?"":"none";if(ok)n++;});
-  const nr=document.getElementById("admin-song-nores");if(nr)nr.style.display=n===0&&q?"block":"none";
+  const r=document.getElementById("admin-song-results"),m=document.getElementById("admin-song-main");
+  if(!r)return;r.innerHTML=adminSearchHTML();if(m)m.style.display=normSearch(S.adminSongQ)?"none":"";
 }
 function editSong(plId,sId){
   const s=(S.songs[plId]||[]).find(x=>x.id===sId);if(!s)return;
